@@ -11,10 +11,10 @@
 (define arith_eval
   (lambda (expr)
     (cond ((number? expr) expr);if single number, return it.
-    (else (let ((op (car expr))
+    (else (let ((op (car expr));else, take arguments, handle compound expressions if necessary
                 (arg1 (arith_eval (cadr expr)))
                 (arg2 (arith_eval (caddr expr))))
-            (cond ((eq? op '*)
+            (cond ((eq? op '*) ;snarf underlying Scheme operators.
                    (* arg1 arg2))
                   ((eq? op '+)
                    (+ arg1 arg2))
@@ -23,7 +23,7 @@
                   ((eq? op '/)
                    (/ arg1 arg2))
                   (else
-                   (error "Invalid operation in: " expr))))))))
+                   (error "Invalid operation in: " expr)))))))) ;throw error if operator isn't one of those.
                   
           
            
