@@ -49,7 +49,15 @@
   (lambda (lis)
     (car lis)))
 
+<<<<<<< HEAD
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value. (Doesn't take variables yet)
+=======
+;Environment declaration that will maintain the interpreter's environment, begins as two lists; one for
+;variable names, the second for the corresponding values.
+(define env '(('return) (null)))
+
+;arith_eval - Function that takes a simple or compound arithmetic expression (* + - /) and returns the proper return value.
+>>>>>>> 81a56a6069d581ebc3da9dd2b175cdb4f2de3e20
 (define arith_eval
   (lambda (expr)
     (cond ((number? expr) expr);if single number, return it.
@@ -68,6 +76,20 @@
                    (remainder arg1 arg2))                  
                   (else
                    (error "Invalid operation in: " expr)))))))) ;throw error if operator isn't one of those.
+
+;bind_var - Function that takes a name and value, and binds them to the interpreter's environment.
+;(define bind_var
+ ; (lambda (name value)
+  ;    (if (member? name (car env)) ;if binding already exists
+   ;       ( ))))
+
+;list_index - Takes a list and a symbol, returns index of that symbol
+(define list_index
+  (lambda (lst sym)
+    (cond ((null? lst) -1)
+          ((eq? (car lst) sym) 0)
+          ((= (list_index (cdr lst) sym) -1) -1)
+          (else (+ 1 (list_index (cdr lst) sym))))))
                   
           
            
