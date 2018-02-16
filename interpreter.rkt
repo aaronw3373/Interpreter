@@ -5,7 +5,7 @@
 ;call (interpret "TestCode.txt")
 (define interpret
   (lambda (filename)
-    (arith_eval (parser filename))))
+    ((parser filename))))
 
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - /) and returns the proper return value.
 (define arith_eval
