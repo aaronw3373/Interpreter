@@ -84,23 +84,26 @@
           (else (+ 1 (list_index (cdr lst) sym))))))
 
 
-;Environment stuff -----------------------------------------------------
+;Mstate stuff -----------------------------------------------------
 
-;return a new env
-(define env_new
+;return a new state
+(define state_new
   (lambda ()
     '(() ())))
 
-;get first variable in the env
-(define env_head_var caar)
+;get first variable in the state
+(define state_head_var caar)
 
-;get value of first variable in env
-(define env_head_val caadr)
+;get value of first variable in state
+(define state_head_val caadr)
 
-; Function that binds a name and value pair to an environment
-(define env_bind
-  (lambda (env name value)
-    (list (cons name (car env)) (cons value (cadr env)))))
+; Function that binds a name and value pair to a state
+(define state_bind
+  (lambda (state name value)
+    (list (cons name (car state)) (cons value (cadr state)))))
+
+
+;Mvalue stuff -----------------------------------------------------
 
 
           
