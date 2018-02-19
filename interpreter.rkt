@@ -30,16 +30,11 @@
   (lambda (program state return_b return_v)
     (cond
       ((or (eq? return_b #t) (null? program)) (cons state (cons return_b (cons return_v '())))) ; nothing to evaluate or change so return as is
-      (else  (cons (car (M_Forward_OP (car program) state return_b return_v))
-                   (cons (cadr (M_Forward_OP (car program) state return_b return_v))
-                         (cons (caddr (M_Forward_OP (car program) state return_b return_v)) '()))))
-    )))
+      (else  (M_Program (cdr program)   (car (M_Forward_OP (car program) state return_b return_v)) ;calls M_Program on the cdr of the program to step to the next expression until ther eis a return_b is true
+                                       (cadr (M_Forward_OP (car program) state return_b return_v))
+                                      (caddr (M_Forward_OP (car program) state return_b return_v))))
+      )))
 
-
-
-    ;  (else (cons (car (M_program (cdr p) (car (M_state (car p) s r_b r_v)) (cadr (M_state (car p) s r_b r_v)) (caddr (M_state (car p) s r_b r_v))))
-     ;             (cons (cadr (M_program (cdr p) (car (M_state (car p) s r_b r_v)) (cadr (M_state (car p) s r_b r_v)) (caddr (M_state (car p) s r_b r_v))))
-      ;                  (cons (caddr (M_program (cdr p) (car (M_state (car p) s r_b r_v)) (cadr (M_state (car p) s r_b r_v)) (caddr (M_state (car p) s r_b r_v)))) '())))))
 
 
 ;there wasn't a != operator, so now there is.
@@ -49,6 +44,7 @@
 
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
+;returns state return_b return_v
 (define M_Forward_OP 
   (lambda (expr state return_b return_v)
     (cond
@@ -85,9 +81,13 @@
   (lambda (lis)
     (car lis)))
 
-	
+;defining order
+(define op car)
+(define arg1 cadr)
+(define arg2 caddr)
+
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state or sends to M_Boolean
-;takes an expression and state and returns a state and return value
+;takes an expression and state and returns a state and value
 (define arith_eval
   (lambda (expr state)
     (cond
@@ -109,28 +109,37 @@
                    (error "Invalid operation in: " expr))));throw error if operator isn't one of those.
       (else (cons state (cons (M_Var_Value expr state) '())))))) ;look up the value of the variable
 
-(define op car)
-(define arg1 cadr)
-(define arg2 caddr)
-
-;takes an expression and state and returns a return value
+;takes an expression and state and returns a state and value
 (define M_Boolean
  (lambda (expr state)
    (cond
      ((eq? expr 'true) (cons state (cons #t '())))
      ((eq? expr 'false) (cons state (cons #f '())))
      ((list? expr) (cond
-                   ((eq? (op expr) '==) )
-                   ((eq? (op expr) '!=) )
-                   ((eq? (op expr) '<) )
-                   ((eq? (op expr) '>) )
-                   ((eq? (op expr) '<=) )
-                   ((eq? (op expr) '>=) )
-                   ((eq? (op expr) '&&) )
-                   ((eq? (op expr) '||) )
-                   ((eq? (op expr) '!) )
+                   ((eq? (op expr) '==) (cons state (cons (eq?   ) '())))
+                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  )) '())))
+                   ((eq? (op expr) '<) (cons state (cons (<) '())))
+                   ((eq? (op expr) '>) (cons state cons (>) '()()))
+                   ((eq? (op expr) '<=) (cons state (cons (<=) '())))
+                   ((eq? (op expr) '>=) (cons state (cons (>=) '())))
+                   ((eq? (op expr) '&&) (cons state (cons (and) '())))
+                   ((eq? (op expr) '||) (cons state (cons (or) '())))
+                   ((eq? (op expr) '!) (cons state (cons (not) '())))
                    (else (error "Invalid Condition: " expr))))
       (else (cons state (cons (M_Var_Value expr state) '()))))))
+
+
+                 ;  ((eq? (car b) '==) (cons (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                  ; ((eq? (car b) '!=) (cons (not (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s)))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                   ;((eq? (car b) '<) (cons (< (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                   ;((eq? (car b) '>) (cons (> (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                   ;((eq? (car b) '<=) (cons (<= (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                   ;((eq? (car b) '>=) (cons (>= (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                   ;((eq? (car b) '&&) (cons (and (car (M_boolean (cadr b) s)) (car (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))) (cdr (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))))
+                   ;((eq? (car b) '||) (cons (or (car (M_boolean (cadr b) s)) (car (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))) (cdr (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))))
+                   ;((eq? (car b) '!) (cons (not (car (M_boolean (cadr b) s))) (cdr (M_boolean (cadr b) s))))
+                   ;(else (error "wrong condition: " b))))
+
 
 ;takes a var and state and returns a state and value (being the value of the variable passed)
 (define M_Var_Value
