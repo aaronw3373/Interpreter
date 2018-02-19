@@ -4,6 +4,12 @@
 ;atom? function to tell if something is an atom
 (define (atom? x) (not (or (pair? x) (null? x) (vector? x))))
 
+;there wasn't a != operator, so now there is.
+(define !=
+  (lambda (x y)
+    (not (= x y))))
+
+
 ;Main Function that takes a filename calles parser on it, evaluates the parse tree and returns the proper value (or error if a variable is used before declared).
 ;call (interpret "TestCode.txt")
 (define interpret
@@ -49,11 +55,7 @@
   (lambda (lis)
     (car lis)))
 
-
-;Environment declaration that will maintain the interpreter's environment, begins as two lists; one for
-;variable names, the second for the corresponding values.
-(define env '(('return) (null)))
-
+	
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value. (Doesn't take variables yet)
 (define arith_eval
   (lambda (expr)
@@ -74,12 +76,6 @@
                   (else
                    (error "Invalid operation in: " expr)))))))) ;throw error if operator isn't one of those.
 
-;bind_var - Function that takes a name and value, and binds them to the interpreter's environment.
-;(define bind_var
- ; (lambda (name value)
-  ;    (if (member? name (car env)) ;if binding already exists
-   ;       ( ))))
-
 ;list_index - Takes a list and a symbol, returns index of that symbol
 (define list_index
   (lambda (lst sym)
@@ -87,6 +83,29 @@
           ((eq? (car lst) sym) 0)
           ((= (list_index (cdr lst) sym) -1) -1)
           (else (+ 1 (list_index (cdr lst) sym))))))
-                  
+
+
+;Mstate stuff -----------------------------------------------------
+
+;return a new state
+(define state_new
+  (lambda ()
+    '(() ())))
+
+;get first variable in the state
+(define state_head_var caar)
+
+;get value of first variable in state
+(define state_head_val caadr)
+
+; Function that binds a name and value pair to a state
+(define state_bind
+  (lambda (state name value)
+    (list (cons name (car state)) (cons value (cadr state)))))
+
+
+;Mvalue stuff -----------------------------------------------------
+
+
           
            
