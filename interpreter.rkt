@@ -1,6 +1,39 @@
 #lang racket
 (require "simpleParser.scm")
+;Interpreter EECS 345
+;Aaron Weinberg and Johnathan Duffy
 
+;program - parsed program
+;expr - one expression from the parsed program
+;state - state of variables and values
+;return_b - boolean if we are ready to return
+;return_v - value of return (integer or boolean)
+
+
+;Main Function that takes a filename and returns the result of the program
+;call (interpret "TestCode.txt")
+(define interpret
+  (lambda (filename)
+    (if (eq? (cadr (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
+        (cond
+          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'TRUE)  ; if return_v is #t the return 'TRUE
+          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'FALSE) ; if return_v is #f the return 'FALSE
+          (else (caddr (M_Program (parser filename)(state_new) #f 0))))           ; else return return_v which will be an integer
+        (error "No Return Value")))) ;if return_b is false then throw error        
+
+;return a new state
+(define state_new
+  (lambda ()
+    '(() ())))
+
+;M_Program calls M_Forward_OP on the next expr until there returb_b is true
+;reutrns (state return_b return_v)
+(define M_Program
+  (lambda (program state return_b return_v)
+    ((cons state (cons return_b (cons return_v '()))))
+    ))
+    
+    
 ;atom? function to tell if something is an atom
 (define (atom? x) (not (or (pair? x) (null? x) (vector? x))))
 
@@ -10,18 +43,12 @@
     (not (= x y))))
 
 
-;Main Function that takes a filename calles parser on it, evaluates the parse tree and returns the proper value (or error if a variable is used before declared).
-;call (interpret "TestCode.txt")
-(define interpret
-  (lambda (filename)
-    (Forward_OP (car (parser filename)))));Test first expression for now
-
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
-(define Forward_OP 
+(define M_Forward_OP 
   (lambda (lis)
     (cond
       ((null? lis) '())
-      ((eq? (car lis) list?) (Forward_OP (car lis)))
+      ((eq? (car lis) list?) (M_Forward_OP (car lis)))
       ((atom? (car lis))  (cond
                              ((eq? (car lis) 'var)      (declaration_OP lis))
                              ((eq? (car lis) '=)        (assignment_OP lis))
@@ -86,11 +113,6 @@
 
 
 ;Mstate stuff -----------------------------------------------------
-
-;return a new state
-(define state_new
-  (lambda ()
-    '(() ())))
 
 ;get first variable in the state
 (define state_head_var caar)
