@@ -33,7 +33,7 @@
 ;else run M_Forward_OP on the next expr in the program
 (define M_Program
   (lambda (program state return_b return_v)
-    (cons state (cons (cadr (M_Forward_OP (car program) state return_b return_v)) (cons (caddr (M_Forward_OP (car program) state return_b return_v)) '())))
+    (cons (car (M_Forward_OP (car program) state return_b return_v)) (cons (cadr (M_Forward_OP (car program) state return_b return_v)) (cons (caddr (M_Forward_OP (car program) state return_b return_v)) '())))
     ))
 
 
@@ -50,7 +50,7 @@
       ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
       ((eq? (car expr) 'var)      (declaration_OP expr))
       ((eq? (car expr) '=)        (assignment_OP expr))
-      ((eq? (car expr) 'return)   (cons state (cons #t (cons (cadr (return_OP expr state)) '()))))
+      ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
       ((eq? (car expr) 'if)       (if_OP expr))
       ((eq? (car expr) 'while)    (while_OP expr))
       (else (error "Invalid Expression: " expr)))))
@@ -68,7 +68,7 @@
 ;Return (return expression)
 (define return_OP
   (lambda (expr state)
-    (cons state (cons (arith_eval (cadr expr)) '()))))
+    (cons (car (arith_eval (cadr expr) state)) (cons (cadr (arith_eval (cadr expr) state)) '()))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 (define if_OP
@@ -81,23 +81,23 @@
     (car lis)))
 
 	
-;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value. (Doesn't take variables yet)
+;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state (Doesn't take variables yet)
 (define arith_eval
-  (lambda (expr)
+  (lambda (expr state)
     (cond ((number? expr) expr);if single number, return it.
     (else (let ((op (car expr));else, take arguments, handle compound expressions if necessary
-                (arg1 (arith_eval (cadr expr)))
-                (arg2 (arith_eval (caddr expr))))
+                (arg1 (arith_eval (cadr expr) state))
+                (arg2 (arith_eval (caddr expr) state)))
             (cond ((eq? op '*) ;snarf underlying Scheme operators.
-                   (* arg1 arg2))
+                   (cons state (cons (* arg1 arg2) '())))
                   ((eq? op '+)
-                   (+ arg1 arg2))
+                   (cons state (cons (+ arg1 arg2) '())))
                   ((eq? op '-)
-                   (- arg1 arg2))
+                   (cons state (cons (- arg1 arg2) '())))
                   ((eq? op '/)
-                   (/ arg1 arg2))
+                   (cons state (cons (/ arg1 arg2) '())))
                   ((eq? op '%)
-                   (remainder arg1 arg2))                  
+                   (cons state (cons (remainder arg1 arg2) '())) )                
                   (else
                    (error "Invalid operation in: " expr)))))))) ;throw error if operator isn't one of those.
 
