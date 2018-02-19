@@ -21,11 +21,6 @@
           (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
-;return a new state
-(define state_new
-  (lambda ()
-    '(() ())))
-
 ;M_Program calls M_Forward_OP on the next expr until there returb_b is true
 ;reutrns (state return_b return_v)
 ;
@@ -125,10 +120,9 @@
      ((eq? expr 'true) (cons state (cons #t '())))
      ((eq? expr 'false) (cons state (cons #f '())))
      ((list? expr) (cond
-                   ((eq? (op expr) '==))
+                   ((eq? (op expr) '==) )
                    ((eq? (op expr) '!=) )
                    ((eq? (op expr) '<) )
-
                    ((eq? (op expr) '>) )
                    ((eq? (op expr) '<=) )
                    ((eq? (op expr) '>=) )
@@ -160,6 +154,10 @@
 
 
 ;Mstate stuff -----------------------------------------------------
+;return a new state
+(define state_new
+  (lambda ()
+    '(() ())))
 
 ;get first variable in the state
 (define state_head_var caar)
