@@ -16,8 +16,8 @@
   (lambda (filename)
     (if (eq? (cadr (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
         (cond
-          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'TRUE)  ; if return_v is #t the return 'TRUE
-          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'FALSE) ; if return_v is #f the return 'FALSE
+          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'true)  ; if return_v is #t the return 'TRUE
+          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'true) ; if return_v is #f the return 'FALSE
           (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
@@ -91,12 +91,13 @@
     (car lis)))
 
 	
-;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state (Doesn't take variables yet)
+;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state or sends to M_Boolean
+;takes an expression and state and returns a state and return value
 (define arith_eval
   (lambda (expr state)
     (cond
       ((number? expr) (cons state (cons expr '())));if single number, return it.
-      (else 
+      ((list? expr) 
             (cond ((eq? (op expr) '*) ;snarf underlying Scheme operators.
                    (cons state (cons (* (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '+)
@@ -106,13 +107,48 @@
                   ((eq? (op expr) '/)
                    (cons state (cons (/ (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '%)
-                   (cons state (cons (remainder (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())) )                
+                   (cons state (cons (remainder (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())) )
+                  ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
+                   (cons (car (M_Boolean expr state)) (cons (cadr (M_Boolean expr state)) '())))                    
                   (else
-                   (error "Invalid operation in: " expr))))))) ;throw error if operator isn't one of those.
+                   (error "Invalid operation in: " expr))));throw error if operator isn't one of those.
+      (else (cons state (cons (M_Var_Value expr state) '())))))) ;look up the value of the variable
 
 (define op car)
 (define arg1 cadr)
 (define arg2 caddr)
+
+;takes an expression and state and returns a return value
+(define M_Boolean
+ (lambda (expr state)
+   (cond
+     ((eq? expr 'true) (cons state (cons #t '())))
+     ((eq? expr 'false) (cons state (cons #f '())))
+     ((list? expr) (cond
+                   ((eq? (op expr) '==))
+                   ((eq? (op expr) '!=) )
+                   ((eq? (op expr) '<) )
+
+                   ((eq? (op expr) '>) )
+                   ((eq? (op expr) '<=) )
+                   ((eq? (op expr) '>=) )
+                   ((eq? (op expr) '&&) )
+                   ((eq? (op expr) '||) )
+                   ((eq? (op expr) '!) )
+                   (else (error "Invalid Condition: " expr))))
+      (else (cons state (cons (M_Var_Value expr state) '()))))))
+
+;takes a var and state and returns a state and value (being the value of the variable passed)
+(define M_Var_Value
+  (lambda (var state)
+    #t)) ;loop up variable value in state
+;error if not declared
+    
+
+
+
+
+   
 
 ;list_index - Takes a list and a symbol, returns index of that symbol
 (define list_index
