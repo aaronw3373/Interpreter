@@ -49,15 +49,12 @@
   (lambda (lis)
     (car lis)))
 
-<<<<<<< HEAD
-;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value. (Doesn't take variables yet)
-=======
+
 ;Environment declaration that will maintain the interpreter's environment, begins as two lists; one for
 ;variable names, the second for the corresponding values.
 (define env '(('return) (null)))
 
-;arith_eval - Function that takes a simple or compound arithmetic expression (* + - /) and returns the proper return value.
->>>>>>> 81a56a6069d581ebc3da9dd2b175cdb4f2de3e20
+;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value. (Doesn't take variables yet)
 (define arith_eval
   (lambda (expr)
     (cond ((number? expr) expr);if single number, return it.
