@@ -3,7 +3,7 @@
 ;Interpreter EECS 345
 ;Aaron Weinberg and Johnathan Duffy
 
-;program - parsed program
+;program - parsed program of expressions
 ;expr - one expression from the parsed program
 ;state - state of variables and values
 ;return_b - boolean if we are ready to return
@@ -18,7 +18,7 @@
         (cond
           ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'TRUE)  ; if return_v is #t the return 'TRUE
           ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'FALSE) ; if return_v is #f the return 'FALSE
-          (else (caddr (M_Program (parser filename)(state_new) #f 0))))           ; else return return_v which will be an integer
+          (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
 ;return a new state
@@ -28,14 +28,14 @@
 
 ;M_Program calls M_Forward_OP on the next expr until there returb_b is true
 ;reutrns (state return_b return_v)
+;
+;TODO finish, if return_b is ture of the program is empty then return the state and value
+;else run M_Forward_OP on the next expr in the program
 (define M_Program
   (lambda (program state return_b return_v)
-    ((cons state (cons return_b (cons return_v '()))))
+    (cons state (cons (cadr (M_Forward_OP (car program) state return_b return_v)) (cons (caddr (M_Forward_OP (car program) state return_b return_v)) '())))
     ))
-    
-    
-;atom? function to tell if something is an atom
-(define (atom? x) (not (or (pair? x) (null? x) (vector? x))))
+
 
 ;there wasn't a != operator, so now there is.
 (define !=
@@ -45,17 +45,15 @@
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
 (define M_Forward_OP 
-  (lambda (lis)
+  (lambda (expr state return_b return_v)
     (cond
-      ((null? lis) '())
-      ((eq? (car lis) list?) (M_Forward_OP (car lis)))
-      ((atom? (car lis))  (cond
-                             ((eq? (car lis) 'var)      (declaration_OP lis))
-                             ((eq? (car lis) '=)        (assignment_OP lis))
-                             ((eq? (car lis) 'return)   (return_OP lis))
-                             ((eq? (car lis) 'if)       (if_OP lis))
-                             ((eq? (car lis) 'while)    (while_OP lis))))
-      (else (error "Invalid single operation in: " lis)))))
+      ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
+      ((eq? (car expr) 'var)      (declaration_OP expr))
+      ((eq? (car expr) '=)        (assignment_OP expr))
+      ((eq? (car expr) 'return)   (cons state (cons #t (cons (cadr (return_OP expr state)) '()))))
+      ((eq? (car expr) 'if)       (if_OP expr))
+      ((eq? (car expr) 'while)    (while_OP expr))
+      (else (error "Invalid Expression: " expr)))))
 
 ;Declaration (var variable (value optional))
 (define declaration_OP
@@ -69,8 +67,8 @@
 
 ;Return (return expression)
 (define return_OP
-  (lambda (lis)
-    (arith_eval (cadr lis))))
+  (lambda (expr state)
+    (cons state (cons (arith_eval (cadr expr)) '()))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 (define if_OP
