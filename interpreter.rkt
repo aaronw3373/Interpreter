@@ -34,11 +34,14 @@
       )))
 
 
+<<<<<<< HEAD
 ;there wasn't a != operator, so now there is.
 (define !=
   (lambda (x y)
     (not (= x y))))
 
+=======
+>>>>>>> origin/master
 ;returns if a symbol is in a list
 (define member?
   (lambda (s lis)
@@ -53,7 +56,7 @@
   (lambda (expr state return_b return_v)
     (cond
       ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
-      ((eq? (car expr) 'var)      (declaration_OP expr))
+      ((eq? (car expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
       ((eq? (car expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
       ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
       ((eq? (car expr) 'if)       (if_OP expr))
@@ -66,7 +69,7 @@
     (cond
       ((member? (cadr expr) (car state)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
-       (state_bind state (cadr expr) (caddr expr)))
+       (state_bind state (cadr expr) (cadr (M_arith_eval (caddr expr) state))))
       (else (state_bind state (cadr expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
@@ -74,8 +77,8 @@
   (lambda (var val state)
     (cond
       ((null? (car state)) (error "Variable not declared:" var))
-      ((eq? var (caar state)) (cons (car state) (cons (cons val (cdadr state)) '())))
-      (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var val (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
+      ((eq? var (caar state)) (cons (car state) (cons (cons (cadr(M_arith_eval val state)) (cdadr state)) '())))
+      (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var (cadr(M_arith_eval val state)) (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
 
 ;Return (return expression)
 (define return_OP
