@@ -51,7 +51,7 @@
       ((eq? (car expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
       ((eq? (car expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
       ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
-      ((eq? (car expr) 'if)       (if_OP expr))
+      ((eq? (car expr) 'if)       (if_OP expr state return_b return_v))
       ((eq? (car expr) 'while)    (while_OP expr state return_b return_v))
       (else (error "Invalid Expression: " expr)))))
 
@@ -80,14 +80,20 @@
     (cons (car (M_arith_eval (cadr expr) state)) (cons (cadr (M_arith_eval (cadr expr) state)) '()))))
 
 ;if statement (if conditional then-statement optional-else-statement)
+; returns state return_b return_v
 (define if_OP
   (lambda (stmt state bool ret)
     (cond
       ((eq? bool #t) (cons state (cons bool (cons ret '()))))
-      ((car (M_Boolean (cadr stmt) state)) (cons (car (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr bool) state)) bool ret)) '()))))
-      (else (if (not (null? (cdddr stmt)))
-                (cons (car (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) '())))
-                (cons (cdr (M_Boolean (cadr stmt) state)) (cons bool (cons ret '()))))))))
+      ((eq? (cadr (M_Boolean (cadr stmt) state)) #t)
+       (cons     (car (M_Forward_OP (caddr stmt) state bool ret))
+        (cons   (cadr (M_Forward_OP (caddr stmt) state bool ret))
+         (cons (caddr (M_Forward_OP (caddr stmt) state bool ret)) '()))))
+      (else (if (pair? (cdddr stmt)) ;if it has an else stmt
+                 (cons (car (M_Forward_OP (cadddr stmt) state bool ret))
+                (cons (cadr (M_Forward_OP (cadddr stmt) state bool ret))
+               (cons (caddr (M_Forward_OP (cadddr stmt) state bool ret)) '())))
+             (cons state (cons bool (cons ret '())))))))) ;no else statement
 
 ;while statement (while conditional body-statement) expr is the while loop statement.
 ; returns state return_b return_v
@@ -186,6 +192,6 @@
 (define M_Var_Value
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
-          ((and (eq? (caar state) name) (eq? (caadr state) ''undefined)) (error "That variable is undefined")) ;TODO fix so so error is thrown if trying to find an undefined variable
+          ;((and (eq? (caar state) name) (eq? (caadr state) ''undefined)) (error "That variable is undefined")) ;TODO fix so so error is thrown if trying to find an undefined variable
           ((eq? (car (car state)) name) (caar (cdr state)))
           (else (M_Var_Value name (m_cdr state))))))

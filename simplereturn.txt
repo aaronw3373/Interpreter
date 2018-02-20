@@ -1,4 +1,4 @@
-var x = 0;
-while (x < 21)
-  x = x + 1;
+var x;
+var y;
+x = x + y;
 return x;
