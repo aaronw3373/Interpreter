@@ -55,7 +55,7 @@
       ((eq? (car expr) 'if)       (if_OP expr))
       ((eq? (car expr) 'while)    (while_OP expr))
       (else (error "Invalid Expression: " expr)))))
-;(cons (cdr (M_expr_value l s)) (cons r_b (cons r_v '()))))
+
 ;Declaration (var variable (value optional))
 (define declaration_OP
   (lambda (lis)
