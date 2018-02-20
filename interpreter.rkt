@@ -105,7 +105,7 @@
                   ((eq? (op expr) '-)
                    (cons state (cons (- (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '/)
-                   (cons state (cons (/ (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   (cons state (cons (quotient (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '%)
                    (cons state (cons (remainder (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())) )
                   ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
