@@ -21,11 +21,9 @@
           (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
+
 ;M_Program calls M_Forward_OP on the next expr until there returb_b is true
 ;reutrns (state return_b return_v)
-;
-;TODO finish, if return_b is ture of the program is empty then return the state and value
-;else run M_Forward_OP on the next expr in the program
 (define M_Program
   (lambda (program state return_b return_v)
     (cond
@@ -34,13 +32,6 @@
                                        (cadr (M_Forward_OP (car program) state return_b return_v))
                                       (caddr (M_Forward_OP (car program) state return_b return_v))))
       )))
-
-
-
-;there wasn't a != operator, so now there is.
-(define !=
-  (lambda (x y)
-    (not (= x y))))
 
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
@@ -72,7 +63,7 @@
 ;Return (return expression)
 (define return_OP
   (lambda (expr state)
-    (cons (car (arith_eval (cadr expr) state)) (cons (cadr (arith_eval (cadr expr) state)) '()))))
+    (cons (car (M_arith_eval (cadr expr) state)) (cons (cadr (M_arith_eval (cadr expr) state)) '()))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 (define if_OP
@@ -91,7 +82,7 @@
 
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state or sends to M_Boolean
 ;takes an expression and state and returns a state and value
-(define arith_eval
+(define M_arith_eval
   (lambda (expr state)
     (cond
       ((number? expr) (cons state (cons expr '())));if single number, return it.
@@ -99,16 +90,16 @@
       ((eq? expr 'false) (cons state (cons #f '())))
       ((list? expr) 
             (cond ((eq? (op expr) '*) ;snarf underlying Scheme operators.
-                   (cons state (cons (* (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   (cons state (cons (* (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '+)
-                   (cons state (cons (+ (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   (cons state (cons (+ (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '-) (if (null? (cddr expr))
-                                          (cons state (cons (- 0 (cadr(arith_eval (arg1 expr) state))) '()))
-                                          (cons state (cons (- (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '()))))
+                                          (cons state (cons (- 0 (cadr(M_arith_eval (arg1 expr) state))) '()))
+                                          (cons state (cons (- (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '()))))
                   ((eq? (op expr) '/)
-                   (cons state (cons (quotient (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   (cons state (cons (quotient (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '%)
-                   (cons state (cons (remainder (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())) )
+                   (cons state (cons (remainder (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())) )
                   ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
                    (cons (car (M_Boolean expr state)) (cons (cadr (M_Boolean expr state)) '())))                    
                   (else
@@ -122,12 +113,12 @@
      ((eq? expr 'true) (cons state (cons #t '())))
      ((eq? expr 'false) (cons state (cons #f '())))
      ((list? expr) (cond
-                   ((eq? (op expr) '==) (cons state (cons (eq? (cadr (arith_eval (arg1 expr) state)) (cadr (arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state)))) '())))
-                   ((eq? (op expr) '<) (cons state (cons (< (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '>) (cons state (cons (> (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '<=) (cons state (cons (<= (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '>=) (cons state (cons (>= (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '==) (cons state (cons (eq? (cadr (M_arith_eval (arg1 expr) state)) (cadr (M_arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state)))) '())))
+                   ((eq? (op expr) '<) (cons state (cons (< (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '>) (cons state (cons (> (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '<=) (cons state (cons (<= (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '>=) (cons state (cons (>= (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                    ((eq? (op expr) '&&) (cons state (cons (and (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
                    ((eq? (op expr) '||) (cons state (cons (or (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
                    ((eq? (op expr) '!) (cons state (cons (not (cadr (M_Boolean (arg1 expr) state))) '())))
