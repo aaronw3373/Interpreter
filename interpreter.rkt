@@ -1,7 +1,7 @@
 #lang racket
 (require "simpleParser.scm")
 ;Interpreter EECS 345
-;Aaron Weinberg and Johnathan Duffy
+;Aaron Weinberg and Jonathan Duffy
 
 ;program - parsed program of expressions
 ;expr - one expression from the parsed program
@@ -116,7 +116,7 @@
      ((eq? expr 'true) (cons state (cons #t '())))
      ((eq? expr 'false) (cons state (cons #f '())))
      ((list? expr) (cond
-                   ((eq? (op expr) '==) (cons state (cons (eq?   ) '())))
+                   ((eq? (op expr) '==) (cons state (cons (eq? ) '())))
                    ((eq? (op expr) '!=) (cons state (cons (not (eq?  )) '())))
                    ((eq? (op expr) '<) (cons state (cons (<) '())))
                    ((eq? (op expr) '>) (cons state (cons (>) '())))
@@ -129,7 +129,7 @@
       (else (cons state (cons (M_Var_Value expr state) '()))))))
 
 
-                 ;  ((eq? (car b) '==) (cons (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
+                  ; ((eq? (car b) '==) (cons (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
                   ; ((eq? (car b) '!=) (cons (not (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s)))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
                    ;((eq? (car b) '<) (cons (< (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
                    ;((eq? (car b) '>) (cons (> (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
@@ -141,17 +141,6 @@
                    ;(else (error "wrong condition: " b))))
 
 
-;takes a var and state and returns a state and value (being the value of the variable passed)
-(define M_Var_Value
-  (lambda (var state)
-    #t)) ;loop up variable value in state
-;error if not declared
-    
-
-
-
-
-   
 
 ;list_index - Takes a list and a symbol, returns index of that symbol
 (define list_index
@@ -168,16 +157,27 @@
   (lambda ()
     '(() ())))
 
-;get first variable in the state
-(define state_head_var caar)
+;acts as cdr for M_state
+(define m_cdr
+  (lambda (state)
+    (list (cdar state) (cdr (cadr state)))))
 
-;get value of first variable in state
-(define state_head_val caadr)
+;checks for an empty state
+(define m_empty?
+  (lambda (state)
+    (null? (car state))))
 
-; Function that binds a name and value pair to a state
+;Function that binds a name and value pair to a state
 (define state_bind
   (lambda (state name value)
     (list (cons name (car state)) (cons value (cadr state)))))
+
+;M_Var_Value takes a variable name and a state, and returns the value associated with that variable.
+(define M_Var_Value
+  (lambda (name state)
+    (cond ((m_empty? state) (error "That variable does not exist."))
+          ((eq? (car (car state)) name) (caar (cdr state)))
+          (else (M_Var_Value name (m_cdr state))))))
 
 
 ;Mvalue stuff -----------------------------------------------------
