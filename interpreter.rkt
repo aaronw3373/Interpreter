@@ -61,10 +61,13 @@
   (lambda (lis)
     (car lis)))
 
-;Assignment (= variable expression)
+;Assignment (= variable expression) changes value of var to val in state
 (define assignment_OP
-  (lambda (lis)
-    (car lis)))
+  (lambda (var val state)
+    (cond
+      ((null? (car state)) (error "Variable not declared:" var))
+      ((eq? var (caar state)) (cons (car state) (cons (cons val (cdadr state)) '())))
+      (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var val (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
 
 ;Return (return expression)
 (define return_OP
@@ -141,6 +144,7 @@
 
 
 ;Mstate stuff -----------------------------------------------------
+
 ;return a new state
 (define state_new
   (lambda ()
@@ -161,6 +165,13 @@
   (lambda (state name value)
     (list (cons name (car state)) (cons value (cadr state)))))
 
+;remove first occurance of the variable from the state
+(define m_remove
+  (lambda (name state)
+    (cond ((m_empty? state) state)
+          ((eq? name (caar state)) (m_cdr state) name)
+          (else (state_bind (m_remove (m_cdr state) name) (caar state) (caadr state))))))
+
 ;M_Var_Value takes a variable name and a state, and returns the value associated with that variable.
 (define M_Var_Value
   (lambda (name state)
@@ -169,7 +180,9 @@
           (else (M_Var_Value name (m_cdr state))))))
 
 
+
 ;Mvalue stuff -----------------------------------------------------
+
 
 
           
