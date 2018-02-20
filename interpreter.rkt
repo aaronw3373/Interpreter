@@ -192,6 +192,6 @@
 (define M_Var_Value
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
-          ;((and (eq? (caar state) name) (eq? (caadr state) ''undefined)) (error "That variable is undefined")) ;TODO fix so so error is thrown if trying to find an undefined variable
+          ((and (eq? (caar state) name) (eq? (caadr state) 'undefined)) (error "That variable is undefined"))
           ((eq? (car (car state)) name) (caar (cdr state)))
           (else (M_Var_Value name (m_cdr state))))))
