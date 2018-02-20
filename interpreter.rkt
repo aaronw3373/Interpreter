@@ -34,6 +34,14 @@
       )))
 
 
+<<<<<<< HEAD
+;there wasn't a != operator, so now there is.
+(define !=
+  (lambda (x y)
+    (not (= x y))))
+
+=======
+>>>>>>> origin/master
 ;returns if a symbol is in a list
 (define member?
   (lambda (s lis)
@@ -80,8 +88,13 @@
 
 ;if statement (if conditional then-statement optional-else-statement)
 (define if_OP
-  (lambda (lis)
-    (car lis)))
+  (lambda (stmt state bool ret)
+    (cond
+      ((eq? bool #t) (cons state (cons bool (cons ret '()))))
+      ((car (M_Boolean (cadr stmt) state)) (cons (car (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr bool) state)) bool ret)) '()))))
+      (else (if (not (null? (cdddr stmt)))
+                (cons (car (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) '())))
+                (cons (cdr (M_Boolean (cadr stmt) state)) (cons bool (cons ret '()))))))))
 
 ;while statement (while conditional body-statement) expr is the while loop statement.
 ; returns state return_b return_v
