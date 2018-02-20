@@ -17,7 +17,7 @@
     (if (eq? (cadr (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
         (cond
           ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'true)  ; if return_v is #t the return 'TRUE
-          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'true) ; if return_v is #f the return 'FALSE
+          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'false) ; if return_v is #f the return 'FALSE
           (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
@@ -92,6 +92,8 @@
   (lambda (expr state)
     (cond
       ((number? expr) (cons state (cons expr '())));if single number, return it.
+      ((eq? expr 'true) (cons state (cons #t '())))
+      ((eq? expr 'false) (cons state (cons #f '())))
       ((list? expr) 
             (cond ((eq? (op expr) '*) ;snarf underlying Scheme operators.
                    (cons state (cons (* (cadr(arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
@@ -116,30 +118,17 @@
      ((eq? expr 'true) (cons state (cons #t '())))
      ((eq? expr 'false) (cons state (cons #f '())))
      ((list? expr) (cond
-                   ((eq? (op expr) '==) (cons state (cons (eq? ) '())))
-                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  )) '())))
-                   ((eq? (op expr) '<) (cons state (cons (<) '())))
-                   ((eq? (op expr) '>) (cons state (cons (>) '())))
-                   ((eq? (op expr) '<=) (cons state (cons (<=) '())))
-                   ((eq? (op expr) '>=) (cons state (cons (>=) '())))
-                   ((eq? (op expr) '&&) (cons state (cons (and) '())))
-                   ((eq? (op expr) '||) (cons state (cons (or) '())))
-                   ((eq? (op expr) '!) (cons state (cons (not) '())))
+                   ((eq? (op expr) '==) (cons state (cons (eq? (cadr (arith_eval (arg1 expr) state)) (cadr (arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state)))) '())))
+                   ((eq? (op expr) '<) (cons state (cons (< (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '>) (cons state (cons (> (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '<=) (cons state (cons (<= (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '>=) (cons state (cons (>= (cadr (arith_eval (arg1 expr) state)) (cadr(arith_eval (arg2 expr) state))) '())))
+                   ((eq? (op expr) '&&) (cons state (cons (and (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
+                   ((eq? (op expr) '||) (cons state (cons (or (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
+                   ((eq? (op expr) '!) (cons state (cons (not (cadr (M_Boolean (arg1 expr) state))) '())))
                    (else (error "Invalid Condition: " expr))))
       (else (cons state (cons (M_Var_Value expr state) '()))))))
-
-
-                  ; ((eq? (car b) '==) (cons (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                  ; ((eq? (car b) '!=) (cons (not (eq? (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s)))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                   ;((eq? (car b) '<) (cons (< (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                   ;((eq? (car b) '>) (cons (> (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                   ;((eq? (car b) '<=) (cons (<= (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                   ;((eq? (car b) '>=) (cons (>= (car (M_expr_value (cadr b) s)) (car (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))) (cdr (M_expr_value (caddr b) (cdr (M_expr_value (cadr b) s))))))
-                   ;((eq? (car b) '&&) (cons (and (car (M_boolean (cadr b) s)) (car (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))) (cdr (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))))
-                   ;((eq? (car b) '||) (cons (or (car (M_boolean (cadr b) s)) (car (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))) (cdr (M_boolean (caddr b) (cdr (M_boolean (cadr b) s))))))
-                   ;((eq? (car b) '!) (cons (not (car (M_boolean (cadr b) s))) (cdr (M_boolean (cadr b) s))))
-                   ;(else (error "wrong condition: " b))))
-
 
 
 ;list_index - Takes a list and a symbol, returns index of that symbol
