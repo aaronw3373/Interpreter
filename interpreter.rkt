@@ -30,18 +30,9 @@
       ((or (eq? return_b #t) (null? program)) (cons state (cons return_b (cons return_v '())))) ; nothing to evaluate or change so return as is
       (else  (M_Program (cdr program)   (car (M_Forward_OP (car program) state return_b return_v)) ;calls M_Program on the cdr of the program to step to the next expression until ther eis a return_b is true
                                        (cadr (M_Forward_OP (car program) state return_b return_v))
-                                      (caddr (M_Forward_OP (car program) state return_b return_v))))
-      )))
+                                      (caddr (M_Forward_OP (car program) state return_b return_v)))))))
 
-
-<<<<<<< HEAD
-;there wasn't a != operator, so now there is.
-(define !=
-  (lambda (x y)
-    (not (= x y))))
-
-=======
->>>>>>> origin/master
+	  
 ;returns if a symbol is in a list
 (define member?
   (lambda (s lis)
@@ -49,6 +40,7 @@
       ((null? lis) #f)
       ((eq? s (car lis)) #t)
       (else (member? s (cdr lis))))))
+
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
 ;returns state return_b return_v
@@ -62,6 +54,7 @@
       ((eq? (car expr) 'if)       (if_OP expr))
       ((eq? (car expr) 'while)    (while_OP expr state return_b return_v))
       (else (error "Invalid Expression: " expr)))))
+
 
 ;Declaration (var variable (value optional))
 (define declaration_OP
@@ -160,15 +153,6 @@
       (else (cons state (cons (M_Var_Value expr state) '()))))))
 
 
-;list_index - Takes a list and a symbol, returns index of that symbol
-(define list_index
-  (lambda (lst sym)
-    (cond ((null? lst) -1)
-          ((eq? (car lst) sym) 0)
-          ((= (list_index (cdr lst) sym) -1) -1)
-          (else (+ 1 (list_index (cdr lst) sym))))))
-
-
 ;Mstate stuff -----------------------------------------------------
 
 ;return a new state
@@ -205,12 +189,3 @@
           ((and (eq? (caar state) name) (eq? (caadr state) ''undefined)) (error "That variable is undefined")) ;TODO fix so so error is thrown if trying to find an undefined variable
           ((eq? (car (car state)) name) (caar (cdr state)))
           (else (M_Var_Value name (m_cdr state))))))
-
-
-
-;Mvalue stuff -----------------------------------------------------
-
-
-
-          
-           
