@@ -42,6 +42,14 @@
   (lambda (x y)
     (not (= x y))))
 
+;returns if a symbol is in a list
+(define member?
+  (lambda (s lis)
+    (cond
+      ((null? lis) #f)
+      ((eq? s (car lis)) #t)
+      (else (member? s (cdr lis))))))
+
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
 ;returns state return_b return_v
@@ -58,8 +66,12 @@
 
 ;Declaration (var variable (value optional))
 (define declaration_OP
-  (lambda (lis)
-    (car lis)))
+  (lambda (expr state)
+    (cond
+      ((member? (cadr expr) (car state)) (error "Variable already declared"))
+      ((= 3 (length expr)) ;assignment too.
+       (state_bind state (cadr expr) (caddr expr)))
+      (else (state_bind state (cadr expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
 (define assignment_OP
