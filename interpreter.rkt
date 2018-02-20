@@ -52,7 +52,7 @@
       ((eq? (car expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
       ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
       ((eq? (car expr) 'if)       (if_OP expr))
-      ((eq? (car expr) 'while)    (while_OP expr))
+      ((eq? (car expr) 'while)    (while_OP expr state return_b return_v))
       (else (error "Invalid Expression: " expr)))))
 
 ;Declaration (var variable (value optional))
@@ -73,6 +73,7 @@
       (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var (cadr(M_arith_eval val state)) (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
 
 ;Return (return expression)
+;returns state value
 (define return_OP
   (lambda (expr state)
     (cons (car (M_arith_eval (cadr expr) state)) (cons (cadr (M_arith_eval (cadr expr) state)) '()))))
@@ -82,10 +83,18 @@
   (lambda (lis)
     (car lis)))
 
-;while statement (while conditional body-statement)
+;while statement (while conditional body-statement) expr is the while loop statement.
+; returns state return_b return_v
 (define while_OP
-  (lambda (lis)
-    (car lis)))
+  (lambda (expr state return_b return_v)
+    (cond
+      ((eq? return_b #t) (cons state (cons return_b (cons return_v '()))))
+      ((eq? (cadr (M_Boolean (cadr expr) state)) #t)  ;if condition is true
+       (while_OP   expr       (car (M_Forward_OP (caddr expr) state return_b return_v))
+                             (cadr (M_Forward_OP (caddr expr) state return_b return_v))
+                            (caddr (M_Forward_OP (caddr expr) state return_b return_v))))
+        (else (cons (car (M_Boolean (cadr expr) state)) (cons return_b (cons return_v '())))))));else condition is false so return state
+
 
 ;defining order
 (define op car)
@@ -111,7 +120,7 @@
                   ((eq? (op expr) '/)
                    (cons state (cons (quotient (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                   ((eq? (op expr) '%)
-                   (cons state (cons (remainder (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())) )
+                   (cons state (cons (remainder (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
                   ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
                    (cons (car (M_Boolean expr state)) (cons (cadr (M_Boolean expr state)) '())))                    
                   (else
@@ -180,6 +189,7 @@
 (define M_Var_Value
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
+          ((and (eq? (caar state) name) (eq? (caadr state) ''undefined)) (error "That variable is undefined")) ;TODO fix so so error is thrown if trying to find an undefined variable
           ((eq? (car (car state)) name) (caar (cdr state)))
           (else (M_Var_Value name (m_cdr state))))))
 

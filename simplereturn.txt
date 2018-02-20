@@ -1,3 +1,4 @@
-var x = 10;
-var y = 12 + x;
-return x * y;
+var x = 0;
+while (x < 21)
+  x = x + 1;
+return x;
