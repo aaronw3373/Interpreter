@@ -34,8 +34,6 @@
       )))
 
 
-<<<<<<< HEAD
-
 ;there wasn't a != operator, so now there is.
 (define !=
   (lambda (x y)
@@ -49,9 +47,6 @@
       ((eq? s (car lis)) #t)
       (else (member? s (cdr lis))))))
 
-
-=======
->>>>>>> origin/master
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
 ;returns state return_b return_v
 (define M_Forward_OP 
@@ -89,8 +84,13 @@
 
 ;if statement (if conditional then-statement optional-else-statement)
 (define if_OP
-  (lambda (lis)
-    (car lis)))
+  (lambda (stmt state bool ret)
+    (cond
+      ((eq? bool #t) (cons state (cons bool (cons ret '()))))
+      ((car (M_Boolean (cadr stmt) state)) (cons (car (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (caddr stmt) (cdr (M_Boolean (cadr bool) state)) bool ret)) '()))))
+      (else (if (not (null? (cdddr stmt)))
+                (cons (car (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (cadr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) (cons (caddr (M_Forward_OP (cadddr stmt) (cdr (M_Boolean (cadr stmt) state)) bool ret)) '())))
+                (cons (cdr (M_Boolean (cadr stmt) state)) (cons bool (cons ret '()))))))))
 
 ;while statement (while conditional body-statement)
 (define while_OP
