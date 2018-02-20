@@ -50,12 +50,12 @@
     (cond
       ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
       ((eq? (car expr) 'var)      (declaration_OP expr))
-      ((eq? (car expr) '=)        (assignment_OP expr))
+      ((eq? (car expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
       ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
       ((eq? (car expr) 'if)       (if_OP expr))
       ((eq? (car expr) 'while)    (while_OP expr))
       (else (error "Invalid Expression: " expr)))))
-
+;(cons (cdr (M_expr_value l s)) (cons r_b (cons r_v '()))))
 ;Declaration (var variable (value optional))
 (define declaration_OP
   (lambda (lis)
