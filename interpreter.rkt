@@ -14,11 +14,11 @@
 ;call (interpret "TestCode.txt")
 (define interpret
   (lambda (filename)
-    (if (eq? (cadr (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
+    (if (eq? (get_return_b (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
         (cond
-          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #t) 'true)  ; if return_v is #t the return 'TRUE
-          ((eq? (caddr (M_Program (parser filename)(state_new) #f 0)) #f) 'false) ; if return_v is #f the return 'FALSE
-          (else (caddr (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
+          ((eq? (get_return_v (M_Program (parser filename)(state_new) #f 0)) #t) 'true)  ; if return_v is #t the return 'TRUE
+          ((eq? (get_return_v (M_Program (parser filename)(state_new) #f 0)) #f) 'false) ; if return_v is #f the return 'FALSE
+          (else (get_return_v (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
         (error "No Return Value")))) ;if return_b is false then throw error        
 
 
@@ -28,19 +28,10 @@
   (lambda (program state return_b return_v)
     (cond
       ((or (eq? return_b #t) (null? program)) (cons state (cons return_b (cons return_v '())))) ; nothing to evaluate or change so return as is
-      (else  (M_Program (cdr program)   (car (M_Forward_OP (car program) state return_b return_v)) ;calls M_Program on the cdr of the program to step to the next expression until ther eis a return_b is true
-                                       (cadr (M_Forward_OP (car program) state return_b return_v))
-                                      (caddr (M_Forward_OP (car program) state return_b return_v)))))))
-
-	  
-;returns if a symbol is in a list
-(define member?
-  (lambda (s lis)
-    (cond
-      ((null? lis) #f)
-      ((eq? s (car lis)) #t)
-      (else (member? s (cdr lis))))))
-
+      (else  (M_Program (get_program_tail program)   (get_state (M_Forward_OP (get_program_head program) state return_b return_v)) ;calls M_Program on the cdr of the program to step to the next expression until ther eis a return_b is true
+                                       (get_return_b (M_Forward_OP (get_program_head program) state return_b return_v))
+                                      (get_return_v (M_Forward_OP (get_program_head program) state return_b return_v)))))))
+	 
 
 ;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
 ;returns state return_b return_v
@@ -48,11 +39,11 @@
   (lambda (expr state return_b return_v)
     (cond
       ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
-      ((eq? (car expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
-      ((eq? (car expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
-      ((eq? (car expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
-      ((eq? (car expr) 'if)       (if_OP expr state return_b return_v))
-      ((eq? (car expr) 'while)    (while_OP expr state return_b return_v))
+      ((eq? (get_op expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
+      ((eq? (get_op expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
+      ((eq? (get_op expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
+      ((eq? (get_op expr) 'if)       (if_OP expr state return_b return_v))
+      ((eq? (get_op expr) 'while)    (while_OP expr state return_b return_v))
       (else (error "Invalid Expression: " expr)))))
 
 
@@ -107,12 +98,6 @@
                             (caddr (M_Forward_OP (caddr expr) state return_b return_v))))
         (else (cons (car (M_Boolean (cadr expr) state)) (cons return_b (cons return_v '())))))));else condition is false so return state
 
-
-;defining order
-(define op car)
-(define arg1 cadr)
-(define arg2 caddr)
-
 ;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state or sends to M_Boolean
 ;takes an expression and state and returns a state and value
 (define M_arith_eval
@@ -158,6 +143,18 @@
                    (else (error "Invalid Condition: " expr))))
       (else (cons state (cons (M_Var_Value expr state) '()))))))
 
+;--------- ABSTRACTIIONS---------
+;defining order
+(define op car)     ;used in m_arith_eval and m_boolean
+(define arg1 cadr)  ;used in m_arith_eval and m_boolean
+(define arg2 caddr) ;used in m_arith_eval and m_boolean
+(define get_state car)        ;used in interpret and M_Program
+(define get_return_b cadr)    ;used in interpret and M_Program
+(define get_return_v caddr)   ;used in interpret and M_Program
+(define get_program_head car) ;used in interpret and M_Program
+(define get_program_tail cdr) ;used in interpret and M_Program
+(define get_op car)     ;used in M_forward_OP
+
 
 ;Mstate stuff -----------------------------------------------------
 
@@ -187,6 +184,14 @@
     (cond ((m_empty? state) state)
           ((eq? name (caar state)) (m_cdr state) name)
           (else (state_bind (m_remove (m_cdr state) name) (caar state) (caadr state))))))
+
+;returns if a symbol is in a list
+(define member?
+  (lambda (s lis)
+    (cond
+      ((null? lis) #f)
+      ((eq? s (car lis)) #t)
+      (else (member? s (cdr lis))))))
 
 ;M_Var_Value takes a variable name and a state, and returns the value associated with that variable.
 (define M_Var_Value
