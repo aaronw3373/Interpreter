@@ -40,8 +40,8 @@
     (cond
       ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
       ((eq? (get_op expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
-      ((eq? (get_op expr) '=)        (cons (assignment_OP (cadr expr) (caddr expr) state) (cons return_b (cons return_v '()))))
-      ((eq? (get_op expr) 'return)   (cons (car (return_OP expr state)) (cons #t (cons (cadr (return_OP expr state)) '()))))
+      ((eq? (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '()))))
+      ((eq? (get_op expr) 'return)   (cons (get_op (return_OP expr state)) (cons #t (cons (get_var (return_OP expr state)) '()))))
       ((eq? (get_op expr) 'if)       (if_OP expr state return_b return_v))
       ((eq? (get_op expr) 'while)    (while_OP expr state return_b return_v))
       (else (error "Invalid Expression: " expr)))))
@@ -154,6 +154,8 @@
 (define get_program_head car) ;used in interpret and M_Program
 (define get_program_tail cdr) ;used in interpret and M_Program
 (define get_op car)     ;used in M_forward_OP
+(define get_var cadr)   ;used in M_forward_OP
+(define get_val caddr)  ;used in M_forward_OP
 
 
 ;Mstate stuff -----------------------------------------------------
