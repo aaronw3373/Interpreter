@@ -22,7 +22,7 @@
         (error "No Return Value")))) ;if return_b is false then throw error        
 
 
-;M_Program calls M_Forward_OP on the next expr until there returb_b is true
+;M_Program calls M_Forward_OP on the next expr until there return_b is true
 ;reutrns (state return_b return_v)
 (define M_Program
   (lambda (program state return_b return_v)
@@ -178,7 +178,7 @@
 ;Function that binds a name and value pair to a state
 (define state_bind
   (lambda (state name value)
-    (list (cons name (car state)) (cons value (cadr state)))))
+    (cons (l_add (car state) name value) (cdr state))))
 
 ;remove first occurance of the variable from the state
 (define m_remove
@@ -188,12 +188,12 @@
           (else (state_bind (m_remove (m_cdr state) name) (caar state) (caadr state))))))
 
 ;returns if a symbol is in a list
-(define member?
-  (lambda (s lis)
+(define m_member?
+  (lambda (s var)
     (cond
-      ((null? lis) #f)
-      ((eq? s (car lis)) #t)
-      (else (member? s (cdr lis))))))
+      ((null? s) #f)
+      ((eq? (l_lookup (car s) var) 'not_found)(m_member? (cdr s) var))
+      (else #t))))
 
 ;M_Var_Value takes a variable name and a state, and returns the value associated with that variable.
 (define M_Var_Value
@@ -202,3 +202,61 @@
           ((and (eq? (caar state) name) (eq? (caadr state) 'undefined)) (error "That variable is undefined"))
           ((eq? (car (car state)) name) (caar (cdr state)))
           (else (M_Var_Value name (m_cdr state))))))
+
+; update a binding for an existing variable
+(define m_update
+  (lambda (s var val)
+    (cond
+      ((null? s) (error "Variable binding not found."))
+      ((eq? (l_lookup (car s) var) 'not_found) (cons (car s) (m_update (cdr s) var val)))
+      (else (cons (l_add (l_rem (car s) var) var val) (cdr s))))))
+
+;adds a layer to the state
+(define m_add_layer
+  (lambda (state)
+    (cons (l_new) state)))
+
+;remove layer from state
+(define m_remove_layer cdr)
+
+;Layer functions. -------------------------------------------
+;make a new layer
+(define l_new
+  (lambda () '(() ())))
+
+;get head variable of layer
+(define headvar caar)
+
+;get value of head variable of layer
+(define headval caadr)
+
+;add a variable and value pair to a layer
+(define l_add
+  (lambda (l var val)
+    (list (cons var (car l)) (cons val (cadr l)))))
+
+;cdr of the layer
+(define l_cdr
+  (lambda (l)
+    (null? (car l))))
+
+;null? for layer
+(define l_null?
+  (lambda (l)
+    (null (car l))))
+
+;remove first occurance of var from layer
+(define l_rem
+  (lambda (l var)
+    (cond
+      ((l_null? l) l)
+      ((eq? var (headvar l)) (l_cdr l))
+      (else (l_add (l_rem (l_cdr l) var) (headvar l) (headval l))))))
+
+;lookup binding for var in the layer
+(define l_lookup
+  (lambda (l var)
+    (cond
+      ((l_null? l) 'var_not_found)
+      ((equal? var (headvar l)) (headvar l))
+      (else (l_lookup (l_cdr l) var)))))
