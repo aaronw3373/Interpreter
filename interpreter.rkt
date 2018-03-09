@@ -30,8 +30,8 @@
                       ;((eq?   (get_op expr) 'break)    (M_break state))
                       ;((eq?   (get_op expr) 'continue) (M_continue state))
                       ;((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
-                      ;((eq?   (get_op expr) 'var)      (cons (declaration_OP  expr state)  (cons return_b (cons return_v '())))) ; fix
-                      ;((eq?   (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '())))) ; fix
+                      ((eq?   (get_op expr) 'var)      (declaration_OP expr state))
+                      ((eq?   (get_op expr) '=)        (assignment_OP expr state))
                       ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
                       ;((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
                       ;((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
@@ -63,25 +63,22 @@
       ((eq? expr #t) 'true)
       ((eq? expr #f) 'false)
       (else expr))))
-
-
-       
+    
 ;Declaration (var variable (value optional))
 (define declaration_OP
   (lambda (expr state)
     (cond
-      ((m_member? (cadr expr) (car state)) (error "Variable already declared"))
+      ((m_member? state (get_var expr)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
-       (state_bind state (cadr expr) (cadr (M_arith_eval (caddr expr) state))))
-      (else (state_bind state (cadr expr) 'undefined)))))
+       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state)))
+      (else (state_bind state (get_var expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
 (define assignment_OP
-  (lambda (var val state)
-    (cond
-      ((null? (car state)) (error "Variable not declared:" var))
-      ((eq? var (caar state)) (cons (car state) (cons (cons (cadr(M_arith_eval val state)) (cdadr state)) '())))
-      (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var (cadr(M_arith_eval val state)) (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
+  (lambda (expr state)
+    (if (m_member? state (get_var expr))
+        (m_update state (get_var expr) (get_val expr))
+        (error "Asssigning varible before declaration" (get_var expr)))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 ; returns state return_b return_v
@@ -110,6 +107,9 @@
                              (cadr (M_Forward_OP (caddr expr) state return_b return_v))
                             (caddr (M_Forward_OP (caddr expr) state return_b return_v))))
         (else (cons (car (M_Boolean (cadr expr) state)) (cons return_b (cons return_v '())))))));else condition is false so return state
+
+
+;;;;;;;M_Value functions;;;;;;;;;;;
 
 ;M_arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper value or sends to M_Boolean
 (define M_arith_eval
