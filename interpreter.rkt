@@ -173,7 +173,7 @@
 ;return a new state
 (define state_new
   (lambda ()
-    '(() ())))
+    '((() ()))))
 
 ;acts as cdr for M_state
 (define m_cdr
@@ -211,7 +211,7 @@
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
           ((eq? (l_lookup (car state) name) 'undefined) (M_Var_Value name (cdr state)))
-          (else (l_lookup name (car state))))))
+          (else (l_lookup (car state) name)))))
 
 ; update a binding for an existing variable
 (define m_update
@@ -260,7 +260,7 @@
 ;null? for layer
 (define l_null?
   (lambda (l)
-    (null (car l))))
+    (null? (car l))))
 
 ;remove first occurance of var from layer
 (define l_rem
