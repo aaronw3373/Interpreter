@@ -281,7 +281,8 @@
  ; return true if var is a member of the layer
 (define l_member?
   (lambda (l var)
-    (not (= -1 (get_index (car l) var)))))
+    (if (equal? 'undefined (l_lookup l var)) #t
+    (#f))))
 
  ;return index of a given symbol in a list
 (define get_index
