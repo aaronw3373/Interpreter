@@ -87,13 +87,19 @@
     (if (= 3 (length expr))
         ; IF
         (if (M_Boolean (condS expr) state return break continue)
-            (M_Forward_OP (thenS expr) state return break continue)
-            state
+            (M_Forward_OP (thenS expr)
+                          state;(M_Forward_OP (condS expr) state return break continue)
+                          return break continue)
+            state;(M_Forward_OP (condS expr) state return break continue)
             )
         ; If Else
         (if (M_Boolean (condS expr) state return break continue)
-            (M_Forward_OP (thenS expr) state return break continue)
-            (M_Forward_OP (elseS expr) state return break continue)
+            (M_Forward_OP (thenS expr)
+                          state;(M_Forward_OP (condS expr) state return break continue)
+                          return break continue)
+            (M_Forward_OP (elseS expr)
+                          state;(M_Forward_OP (condS expr) state return break continue)
+                          return break continue)
             ))))
 
 
@@ -109,8 +115,10 @@
   (lambda (condition body state return break break_while continue)
     (if (M_Boolean condition state return break continue)
         (while_loop condition body
-                    (call/cc (lambda (continue_while) (M_Forward_OP body state return break_while continue_while)))
-                    return break break_while continue)
+                    (call/cc (lambda (continue_while) (M_Forward_OP body
+                                                         state ;(M_Forward_OP condition state return break continue)
+                                                         return break_while continue_while)))
+                      return break break_while continue)
         state))) 
 
 
@@ -133,6 +141,7 @@
       ((list? expr) 
             (cond
               ;arithmatic functions
+              ;((eq? (op expr) '=)(M_value_assign expr state return break continue))  ; for side effects. not yet enabled
               ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '-) (if (null? (cddr expr))
@@ -164,6 +173,11 @@
                    ((eq? (op expr) '!) (not (M_Boolean (arg1 expr) state return break continue)))
                    (else (error "Invalid Condition: " expr))))
        (else (M_Var_Value expr state)))))
+
+;for side effects
+(define M_value_assign
+  (lambda (expr state return break continue)
+      (M_arith_eval (arg2 expr) state return break continue)))
 
 ;--------- ABSTRACTIIONS---------
 ;defining order
