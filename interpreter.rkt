@@ -26,17 +26,18 @@
       ((null? expr) state)
       ((list? expr) (cond
                       ((list? (get_op expr)) (M_Program expr state return break continue)) ;if the expression is a list of expressions call M_Program
-                      ;((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
-                      ;((eq?   (get_op expr) 'break)    (M_break state))
-                      ;((eq?   (get_op expr) 'continue) (M_continue state))
+                      ((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
+                      ((eq?   (get_op expr) 'break)    (break state))
+                      ((eq?   (get_op expr) 'continue) (continue state))
                       ;((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
                       ((eq?   (get_op expr) 'var)      (declaration_OP expr state return break continue))
                       ((eq?   (get_op expr) '=)        (assignment_OP expr state return break continue))
                       ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
-                      ;((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
-                      ;((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
+                      ((eq?   (get_op expr) 'if)       (if_OP expr state return break continue))
+                      ((eq?   (get_op expr) 'while)    (while_OP expr state return break continue))
                       ;((eq?   (get_op expr) 'throw)    (M_throw expr state return break continue))
-                      (else   (error "Invalid Expression: " expr)))) ;invalid operation
+                      (else   (M_arith_eval_state expr state return break continue)))) ; for side effects
+                      ;(else   (error "Invalid Expression: " expr)))) ;invalid operation ;for no side effects
       (else state))))
        
 ;M_Program executes on a list of statements, doesn't add a layer just executes the list of statements in order
@@ -48,6 +49,17 @@
       (else (M_Program (cdr exprLis) (M_Forward_OP (car exprLis) state return break continue) return break continue)))))
 
 
+; for side effects
+(define M_arith_eval_state
+  (lambda (expr state return break continue)
+    (eval_left (lambda (state expr2) (M_Forward_OP expr2 state return break continue)) state (get_program_tail expr))))
+
+; for side effects
+(define eval_left
+  (lambda (f initial lis)
+    (if (null? lis)
+        initial
+        (eval_left f (f initial (car lis)) (cdr lis)))))
 
 ;;;;;;;;;;;;;;;;operations ;;;;;;;;;;;;;;
 ;Return
@@ -70,7 +82,7 @@
     (cond
       ((m_member? state (get_var expr)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
-       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state  return break continue)))
+       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state return break continue)))
       (else (state_bind state (get_var expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
@@ -81,33 +93,53 @@
         (error "Asssigning varible before declaration" (get_var expr)))))
 
 ;if statement (if conditional then-statement optional-else-statement)
-; returns state return_b return_v
+; returns state  ;currently no side effects
 (define if_OP
-  (lambda (stmt state bool ret)
-    (cond
-      ((eq? bool #t) (cons state (cons bool (cons ret '()))))
-      ((eq? (cadr (M_Boolean (cadr stmt) state)) #t)
-       (cons     (car (M_Forward_OP (caddr stmt) state bool ret))
-        (cons   (cadr (M_Forward_OP (caddr stmt) state bool ret))
-         (cons (caddr (M_Forward_OP (caddr stmt) state bool ret)) '()))))
-      (else (if (pair? (cdddr stmt)) ;if it has an else stmt
-                 (cons (car (M_Forward_OP (cadddr stmt) state bool ret))
-                (cons (cadr (M_Forward_OP (cadddr stmt) state bool ret))
-               (cons (caddr (M_Forward_OP (cadddr stmt) state bool ret)) '())))
-             (cons state (cons bool (cons ret '())))))))) ;no else statement
+  (lambda (expr state return break continue)
+    (if (= 3 (length expr))
+        ; IF
+        (if (M_Boolean (condS expr) state return break continue)
+            (M_Forward_OP (thenS expr)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
+                          return break continue)
+            (M_Forward_OP (condS expr) state return break continue);side effects
+            )
+        ; If Else
+        (if (M_Boolean (condS expr) state return break continue)
+            (M_Forward_OP (thenS expr)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
+                          return break continue)
+            (M_Forward_OP (elseS expr)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
+                          return break continue)
+            ))))
+
 
 ;while statement (while conditional body-statement) expr is the while loop statement.
-; returns state return_b return_v
+; returns state ;currently no side effects
 (define while_OP
-  (lambda (expr state return_b return_v)
-    (cond
-      ((eq? return_b #t) (cons state (cons return_b (cons return_v '()))))
-      ((eq? (cadr (M_Boolean (cadr expr) state)) #t)  ;if condition is true
-       (while_OP   expr       (car (M_Forward_OP (caddr expr) state return_b return_v))
-                             (cadr (M_Forward_OP (caddr expr) state return_b return_v))
-                            (caddr (M_Forward_OP (caddr expr) state return_b return_v))))
-        (else (cons (car (M_Boolean (cadr expr) state)) (cons return_b (cons return_v '())))))));else condition is false so return state
+  (lambda (expr state return break continue)
+    (call/cc ;new continuation to fall back to
+     (lambda (break_while)
+       (while_loop (condW expr) (bodyW expr) state return break break_while continue)))))
 
+(define while_loop
+  (lambda (condition body state return break break_while continue)
+    (if (M_Boolean condition state return break continue)
+        (while_loop condition body
+                    (call/cc (lambda (continue_while) (M_Forward_OP body
+                                                         (M_Forward_OP condition state return break continue);side effects
+                                                         return break_while continue_while)))
+                      return break break_while continue)
+        state))) 
+
+
+;executes a block of statements, in its own layer
+(define M_block
+  (lambda (block state return break continue)
+    (m_remove_layer (M_Program (cdr block) (m_add_layer state) return
+                               (lambda (k) (break (m_remove_layer k)))
+                               (lambda (k) (continue (m_remove_layer k)))))))
 
 ;;;;;;;M_Value functions;;;;;;;;;;;
 
@@ -121,6 +153,7 @@
       ((list? expr) 
             (cond
               ;arithmatic functions
+              ((eq? (op expr) '=)(M_value_assign expr state return break continue))  ; for side effects. enabled but not working 100%
               ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '-) (if (null? (cddr expr))
@@ -153,6 +186,11 @@
                    (else (error "Invalid Condition: " expr))))
        (else (M_Var_Value expr state)))))
 
+;for side effects
+(define M_value_assign
+  (lambda (expr state return break continue)
+      (M_arith_eval (arg2 expr) state return break continue)))
+
 ;--------- ABSTRACTIIONS---------
 ;defining order
 (define op car)     ;used in m_arith_eval and m_boolean
@@ -166,8 +204,11 @@
 (define get_op car)     ;used in M_forward_OP
 (define get_var cadr)   ;used in M_forward_OP
 (define get_val caddr)  ;used in M_forward_OP
-
-
+(define condS cadr)     ;used in If_OP
+(define thenS caddr)    ;used in If_OP
+(define elseS cadddr)   ;used in If_OP
+(define condW cadr)     ;used in While_OP
+(define bodyW caddr)    ;used in While_OP
 ;Mstate stuff -----------------------------------------------------
 
 ;return a new state
@@ -183,7 +224,7 @@
 ;checks for an empty state
 (define m_empty?
   (lambda (state)
-    (null? (car state))))
+    (null? state)))
 
 ;Function that binds a name and value pair to a state
 (define state_bind
@@ -229,13 +270,6 @@
 ;remove layer from state
 (define m_remove_layer cdr)
 
-;executes a block of statements, in its own layer
-(define m_block
-  (lambda (block state return break continue)
-    (m_remove_layer (M_Program (cdr block) (l_add state) return
-                               (lambda (k) (break (l_rem k)))
-                               (lambda (k) (continue (l_rem k)))))))
-
 ;Layer functions. -------------------------------------------
 ;make a new layer
 (define l_new
@@ -255,7 +289,7 @@
 ;cdr of the layer
 (define l_cdr
   (lambda (l)
-    (null? (car l))))
+    (list (cdar l) (cdadr l))))
 
 ;null? for layer
 (define l_null?
@@ -275,7 +309,7 @@
   (lambda (l var)
     (cond
       ((l_null? l) 'undefined)
-      ((equal? var (headvar l)) (headvar l))
+      ((equal? var (headvar l)) (headval l))
       (else (l_lookup (l_cdr l) var)))))
 
  ; return true if var is a member of the layer
@@ -283,11 +317,3 @@
   (lambda (l var)
     (if (equal? 'undefined (l_lookup l var)) #t
     (#f))))
-
- ;return index of a given symbol in a list
-(define get_index
-        (lambda (e lst)
-                (if (null? lst)  -1
-                        (if (eq? (car lst) e) 0
-                                (if (= (get_index e (cdr lst)) -1) -1
-                                        (+ 1 (get_index e (cdr lst))))))))
