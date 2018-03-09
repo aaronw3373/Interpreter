@@ -188,6 +188,7 @@
 ;Function that binds a name and value pair to a state
 (define state_bind
   (lambda (state name value)
+    (if (l_member? (car state) var) error "Variable already declared")
     (cons (l_add (car state) name value) (cdr state))))
 
 ;remove first occurance of the variable from the state
@@ -276,3 +277,16 @@
       ((l_null? l) 'var_not_found)
       ((equal? var (headvar l)) (headvar l))
       (else (l_lookup (l_cdr l) var)))))
+
+ ; return true if var is a member of the layer
+(define l_member?
+  (lambda (l var)
+    (not (= -1 (get_index (car l) var)))))
+
+ ;return index of a given symbol in a list
+(define get_index
+-  (lambda (lst sym)
+-    (cond ((null? lst) -1)
+-          ((eq? (car lst) sym) 0)
+-          ((= (get_index (cdr lst) sym) -1) -1)
+-          (else (+ 1 (get_index (cdr lst) sym))))))
