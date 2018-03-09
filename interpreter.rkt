@@ -188,7 +188,7 @@
 ;Function that binds a name and value pair to a state
 (define state_bind
   (lambda (state name value)
-    (if (l_member? (car state) var) error "Variable already declared")
+    (if (l_member? (car state) name) error "Variable already declared")
     (cons (l_add (car state) name value) (cdr state))))
 
 ;remove first occurance of the variable from the state
@@ -285,8 +285,8 @@
 
  ;return index of a given symbol in a list
 (define get_index
--  (lambda (lst sym)
--    (cond ((null? lst) -1)
--          ((eq? (car lst) sym) 0)
--          ((= (get_index (cdr lst) sym) -1) -1)
--          (else (+ 1 (get_index (cdr lst) sym))))))
+        (lambda (e lst)
+                (if (null? lst)  -1
+                        (if (eq? (car lst) e) 0
+                                (if (= (get_index e (cdr lst)) -1) -1
+                                        (+ 1 (get_index e (cdr lst))))))))
