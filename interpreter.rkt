@@ -30,8 +30,8 @@
                       ;((eq?   (get_op expr) 'break)    (M_break state))
                       ;((eq?   (get_op expr) 'continue) (M_continue state))
                       ;((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
-                      ((eq?   (get_op expr) 'var)      (declaration_OP expr state))
-                      ((eq?   (get_op expr) '=)        (assignment_OP expr state))
+                      ((eq?   (get_op expr) 'var)      (declaration_OP expr state return break continue))
+                      ((eq?   (get_op expr) '=)        (assignment_OP expr state return break continue))
                       ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
                       ;((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
                       ;((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
@@ -54,7 +54,7 @@
 ;returns calls return (referencing first call/cc in interpret to return the value from the program)
 (define return_OP
   (lambda (expr state return break continue)
-    (return (return_value (M_arith_eval (cadr expr) state )))))
+    (return (return_value (M_arith_eval (cadr expr) state return break continue)))))
 
 ;helper since returns can be integers and booleans
 (define return_value
@@ -66,18 +66,18 @@
     
 ;Declaration (var variable (value optional))
 (define declaration_OP
-  (lambda (expr state)
+  (lambda (expr state return break continue)
     (cond
       ((m_member? state (get_var expr)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
-       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state)))
+       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state  return break continue)))
       (else (state_bind state (get_var expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
 (define assignment_OP
-  (lambda (expr state)
+  (lambda (expr state  return break continue)
     (if (m_member? state (get_var expr))
-        (m_update state (get_var expr) (get_val expr))
+        (m_update state (get_var expr) (M_arith_eval(get_val expr) state return break continue))
         (error "Asssigning varible before declaration" (get_var expr)))))
 
 ;if statement (if conditional then-statement optional-else-statement)
@@ -113,7 +113,7 @@
 
 ;M_arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper value or sends to M_Boolean
 (define M_arith_eval
-  (lambda (expr state)
+  (lambda (expr state return break continue)
     (cond
       ((number? expr) expr ) ;if number, return it.
       ((eq? expr 'true) #t)
@@ -121,35 +121,35 @@
       ((list? expr) 
             (cond
               ;arithmatic functions
-              ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
-              ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
+              ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
+              ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '-) (if (null? (cddr expr))
-                                    (- 0 (M_arith_eval (arg1 expr) state))
-                                    (- (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state))))
-              ((eq? (op expr) '/)(quotient (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
-              ((eq? (op expr) '%)(remainder (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))                
+                                    (- 0 (M_arith_eval (arg1 expr) state return break continue))
+                                    (- (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue))))
+              ((eq? (op expr) '/)(quotient (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
+              ((eq? (op expr) '%)(remainder (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))                
               ;forward onto boolean functions
               ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
-                   (M_Boolean expr state))                   
+                   (M_Boolean expr state return break continue))                   
               (else(error "Invalid operation in: " expr)))) ;throw error if operator isn't one of those operators.
       (else (M_Var_Value expr state))))) ;look up the value of the variable
 
 ;takes an expression and state and returns a state and value
 (define M_Boolean
- (lambda (expr state)
+ (lambda (expr state return break continue)
    (cond
      ((eq? expr 'true) #t)
      ((eq? expr 'false) #f)
      ((list? expr) (cond
-                   ((eq? (op expr) '==) (eq? (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
-                   ((eq? (op expr) '!=) (not (eq? (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state))))
-                   ((eq? (op expr) '<) (< (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
-                   ((eq? (op expr) '>) (> (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
-                   ((eq? (op expr) '<=) (<= (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
-                   ((eq? (op expr) '>=) (>= (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))                 
-                   ((eq? (op expr) '&&) (and (M_Boolean (arg1 expr) state) (M_Boolean (arg2 expr) state)))
-                   ((eq? (op expr) '||) (or (M_Boolean (arg1 expr) state) (M_Boolean (arg2 expr) state)))
-                   ((eq? (op expr) '!) (not (M_Boolean (arg1 expr) state)))
+                   ((eq? (op expr) '==) (eq? (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '!=) (not (eq? (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue))))
+                   ((eq? (op expr) '<) (< (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '>) (> (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '<=) (<= (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '>=) (>= (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))                 
+                   ((eq? (op expr) '&&) (and (M_Boolean (arg1 expr) state return break continue) (M_Boolean (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '||) (or (M_Boolean (arg1 expr) state return break continue) (M_Boolean (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '!) (not (M_Boolean (arg1 expr) state return break continue)))
                    (else (error "Invalid Condition: " expr))))
        (else (M_Var_Value expr state)))))
 
@@ -173,7 +173,7 @@
 ;return a new state
 (define state_new
   (lambda ()
-    '(() ())))
+    '((() ()))))
 
 ;acts as cdr for M_state
 (define m_cdr
@@ -203,7 +203,7 @@
   (lambda (s var)
     (cond
       ((null? s) #f)
-      ((eq? (l_lookup (car s) var) 'not_found)(m_member? (cdr s) var))
+      ((eq? (l_lookup (car s) var) 'undefined)(m_member? (cdr s) var))
       (else #t))))
 
 ;M_Var_Value takes a variable name and a state, and returns the value associated with that variable.
@@ -211,7 +211,7 @@
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
           ((eq? (l_lookup (car state) name) 'undefined) (M_Var_Value name (cdr state)))
-          (else (l_lookup name (car state))))))
+          (else (l_lookup (car state) name)))))
 
 ; update a binding for an existing variable
 (define m_update
@@ -260,7 +260,7 @@
 ;null? for layer
 (define l_null?
   (lambda (l)
-    (null (car l))))
+    (null? (car l))))
 
 ;remove first occurance of var from layer
 (define l_rem
@@ -281,7 +281,8 @@
  ; return true if var is a member of the layer
 (define l_member?
   (lambda (l var)
-    (not (= -1 (get_index (car l) var)))))
+    (if (equal? 'undefined (l_lookup l var)) #t
+    (#f))))
 
  ;return index of a given symbol in a list
 (define get_index
