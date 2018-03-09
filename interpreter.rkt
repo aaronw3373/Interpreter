@@ -3,12 +3,11 @@
 ;Interpreter EECS 345
 ;Aaron Weinberg and Jonathan Duffy
 
-;program - parsed program of expressions
+;exprLis - parsed program of expressions
 ;expr - one expression from the parsed program
 ;state - state of variables and values
-;return_b - boolean if we are ready to return
-;return_v - value of return (integer or boolean)
 
+;;;;;;;;;;;;;;;;;;;;;main functions ;;;;;;;;;;;;;
 
 ;Main Function that takes a filename and returns the result of the program
 ;call (interpret "TestCode.txt")
@@ -16,7 +15,7 @@
   (lambda (filename)
     (call/cc
      (lambda (return)
-       (M_Forward_OP (parser filename) (state_new) return #f #f)
+       (M_Forward_OP (parser filename) (state_new) return #f #f)))))
        
 
 ;this is our M_State function, takes a parse tree fragment
@@ -26,16 +25,16 @@
     (cond
       ((null? expr) state)
       ((list? expr) (cond
-                      ((list? (get_op expr)) (M_Program stmt state return break continue)) ;if the expression is a list of expressions call M_Program
-                      ((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
-                      ((eq?   (get_op expr) 'break)    (M_break state))
-                      ((eq?   (get_op expr) 'continue) (M_continue state))
-                      ((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
-                      ((eq?   (get_op expr) 'var)      (cons (declaration_OP  expr state)  (cons return_b (cons return_v '())))) ; fix
-                      ((eq?   (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '())))) ; fix
-                      ((eq?   (get_op expr) 'return)   (cons (get_op (return_OP expr state)) (cons #t (cons (get_var (return_OP expr state)) '()))))   ;fix
-                      ((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
-                      ((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
+                      ((list? (get_op expr)) (M_Program expr state return break continue)) ;if the expression is a list of expressions call M_Program
+                      ;((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
+                      ;((eq?   (get_op expr) 'break)    (M_break state))
+                      ;((eq?   (get_op expr) 'continue) (M_continue state))
+                      ;((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
+                      ;((eq?   (get_op expr) 'var)      (cons (declaration_OP  expr state)  (cons return_b (cons return_v '())))) ; fix
+                      ;((eq?   (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '())))) ; fix
+                      ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
+                      ;((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
+                      ;((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
                       (else   (error "Invalid Expression: " expr)))) ;invalid operation
       (else state))))
        
@@ -48,15 +47,29 @@
       (else (M_Program (cdr exprLis) (M_Forward_OP (car exprLis) state return break continue) return break continue)))))
 
 
-	 
+
+;;;;;;;;;;;;;;;;operations ;;;;;;;;;;;;;;
+;Return
+;returns calls return (referencing first call/cc in interpret to return the value from the program)
+(define return_OP
+  (lambda (expr state return break continue)
+    (return (return_value (M_arith_eval (cadr expr) state )))))
+
+;helper since returns can be integers and booleans
+(define return_value
+  (lambda (expr)
+    (cond
+      ((eq? expr #t) 'true)
+      ((eq? expr #f) 'false)
+      (else expr))))
 
 
-
+       
 ;Declaration (var variable (value optional))
 (define declaration_OP
   (lambda (expr state)
     (cond
-      ((member? (cadr expr) (car state)) (error "Variable already declared"))
+      ((m_member? (cadr expr) (car state)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
        (state_bind state (cadr expr) (cadr (M_arith_eval (caddr expr) state))))
       (else (state_bind state (cadr expr) 'undefined)))))
@@ -68,12 +81,6 @@
       ((null? (car state)) (error "Variable not declared:" var))
       ((eq? var (caar state)) (cons (car state) (cons (cons (cadr(M_arith_eval val state)) (cdadr state)) '())))
       (else (cons (car state) (cons (cons (caadr state) (cadr (assignment_OP var (cadr(M_arith_eval val state)) (cons (cdar state) (cons (cdadr state) '()))))) '()))))))
-
-;Return (return expression)
-;returns state value
-(define return_OP
-  (lambda (expr state)
-    (cons (car (M_arith_eval (cadr expr) state)) (cons (cadr (M_arith_eval (cadr expr) state)) '()))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 ; returns state return_b return_v
@@ -103,50 +110,47 @@
                             (caddr (M_Forward_OP (caddr expr) state return_b return_v))))
         (else (cons (car (M_Boolean (cadr expr) state)) (cons return_b (cons return_v '())))))));else condition is false so return state
 
-;arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper return value and the state or sends to M_Boolean
-;takes an expression and state and returns a state and value
+;M_arith_eval - Function that takes a simple or compound arithmetic expression (* + - / %) and returns the proper value or sends to M_Boolean
 (define M_arith_eval
   (lambda (expr state)
     (cond
-      ((number? expr) (cons state (cons expr '())));if single number, return it.
-      ((eq? expr 'true) (cons state (cons #t '())))
-      ((eq? expr 'false) (cons state (cons #f '())))
+      ((number? expr) expr ) ;if number, return it.
+      ((eq? expr 'true) #t)
+      ((eq? expr 'false) #f)
       ((list? expr) 
-            (cond ((eq? (op expr) '*) ;snarf underlying Scheme operators.
-                   (cons state (cons (* (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                  ((eq? (op expr) '+)
-                   (cons state (cons (+ (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                  ((eq? (op expr) '-) (if (null? (cddr expr))
-                                          (cons state (cons (- 0 (cadr(M_arith_eval (arg1 expr) state))) '()))
-                                          (cons state (cons (- (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '()))))
-                  ((eq? (op expr) '/)
-                   (cons state (cons (quotient (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                  ((eq? (op expr) '%)
-                   (cons state (cons (remainder (cadr(M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                  ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
-                   (cons (car (M_Boolean expr state)) (cons (cadr (M_Boolean expr state)) '())))                    
-                  (else
-                   (error "Invalid operation in: " expr))));throw error if operator isn't one of those.
-      (else (cons state (cons (M_Var_Value expr state) '())))))) ;look up the value of the variable
+            (cond
+              ;arithmatic functions
+              ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
+              ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
+              ((eq? (op expr) '-) (if (null? (cddr expr))
+                                    (- 0 (M_arith_eval (arg1 expr) state))
+                                    (- (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state))))
+              ((eq? (op expr) '/)(quotient (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))
+              ((eq? (op expr) '%)(remainder (M_arith_eval (arg1 expr) state)(M_arith_eval (arg2 expr) state)))                
+              ;forward onto boolean functions
+              ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
+                   (M_Boolean expr state))                   
+              (else(error "Invalid operation in: " expr)))) ;throw error if operator isn't one of those operators.
+      (else (M_Var_Value expr state))))) ;look up the value of the variable
 
 ;takes an expression and state and returns a state and value
 (define M_Boolean
  (lambda (expr state)
    (cond
-     ((eq? expr 'true) (cons state (cons #t '())))
-     ((eq? expr 'false) (cons state (cons #f '())))
+     ((eq? expr 'true) #t)
+     ((eq? expr 'false) #f)
      ((list? expr) (cond
-                   ((eq? (op expr) '==) (cons state (cons (eq? (cadr (M_arith_eval (arg1 expr) state)) (cadr (M_arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '!=) (cons state (cons (not (eq?  (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state)))) '())))
-                   ((eq? (op expr) '<) (cons state (cons (< (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '>) (cons state (cons (> (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '<=) (cons state (cons (<= (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '>=) (cons state (cons (>= (cadr (M_arith_eval (arg1 expr) state)) (cadr(M_arith_eval (arg2 expr) state))) '())))
-                   ((eq? (op expr) '&&) (cons state (cons (and (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
-                   ((eq? (op expr) '||) (cons state (cons (or (cadr (M_Boolean (arg1 expr) state)) (cadr(M_Boolean (arg2 expr) state))) '())))
-                   ((eq? (op expr) '!) (cons state (cons (not (cadr (M_Boolean (arg1 expr) state))) '())))
+                   ((eq? (op expr) '==) (eq? (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
+                   ((eq? (op expr) '!=) (not (eq? (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state))))
+                   ((eq? (op expr) '<) (< (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
+                   ((eq? (op expr) '>) (> (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
+                   ((eq? (op expr) '<=) (<= (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))
+                   ((eq? (op expr) '>=) (>= (M_arith_eval (arg1 expr) state) (M_arith_eval (arg2 expr) state)))                 
+                   ((eq? (op expr) '&&) (and (M_Boolean (arg1 expr) state) (M_Boolean (arg2 expr) state)))
+                   ((eq? (op expr) '||) (or (M_Boolean (arg1 expr) state) (M_Boolean (arg2 expr) state)))
+                   ((eq? (op expr) '!) (not (M_Boolean (arg1 expr) state)))
                    (else (error "Invalid Condition: " expr))))
-      (else (cons state (cons (M_Var_Value expr state) '()))))))
+       (else (M_Var_Value expr state)))))
 
 ;--------- ABSTRACTIIONS---------
 ;defining order
