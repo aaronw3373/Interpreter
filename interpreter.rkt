@@ -70,7 +70,7 @@
     (cond
       ((m_member? state (get_var expr)) (error "Variable already declared"))
       ((= 3 (length expr)) ;assignment too.
-       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state  return break continue)))
+       (state_bind state (get_var expr) (M_arith_eval (get_val expr) state return break continue)))
       (else (state_bind state (get_var expr) 'undefined)))))
 
 ;Assignment (= variable expression) changes value of var to val in state
@@ -117,9 +117,9 @@
 ;executes a block of statements, in its own layer
 (define M_block
   (lambda (block state return break continue)
-    (m_remove_layer (M_Program (cdr block) (l_add state) return
-                               (lambda (k) (break (l_rem k)))
-                               (lambda (k) (continue (l_rem k)))))))
+    (m_remove_layer (M_Program (cdr block) (m_add_layer state) return
+                               (lambda (k) (break (m_remove_layer k)))
+                               (lambda (k) (continue (m_remove_layer k)))))))
 
 ;;;;;;;M_Value functions;;;;;;;;;;;
 
@@ -198,7 +198,7 @@
 ;checks for an empty state
 (define m_empty?
   (lambda (state)
-    (null? (car state))))
+    (null? state)))
 
 ;Function that binds a name and value pair to a state
 (define state_bind
@@ -263,7 +263,7 @@
 ;cdr of the layer
 (define l_cdr
   (lambda (l)
-    (null? (car l))))
+    (list (cdar l) (cdadr l))))
 
 ;null? for layer
 (define l_null?
@@ -283,7 +283,7 @@
   (lambda (l var)
     (cond
       ((l_null? l) 'undefined)
-      ((equal? var (headvar l)) (headvar l))
+      ((equal? var (headvar l)) (headval l))
       (else (l_lookup (l_cdr l) var)))))
 
  ; return true if var is a member of the layer
@@ -291,11 +291,3 @@
   (lambda (l var)
     (if (equal? 'undefined (l_lookup l var)) #t
     (#f))))
-
- ;return index of a given symbol in a list
-(define get_index
-        (lambda (e lst)
-                (if (null? lst)  -1
-                        (if (eq? (car lst) e) 0
-                                (if (= (get_index e (cdr lst)) -1) -1
-                                        (+ 1 (get_index e (cdr lst))))))))
