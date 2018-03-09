@@ -36,6 +36,7 @@
                       ((eq?   (get_op expr) 'return)   (cons (get_op (return_OP expr state)) (cons #t (cons (get_var (return_OP expr state)) '()))))   ;fix
                       ((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
                       ((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
+                      ((eq?   (get_op expr) 'throw)    (M_throw expr state return break continue))
                       (else   (error "Invalid Expression: " expr)))) ;invalid operation
       (else state))))
        
@@ -204,16 +205,15 @@
 (define M_Var_Value
   (lambda (name state)
     (cond ((m_empty? state) (error "That variable does not exist."))
-          ((and (eq? (caar state) name) (eq? (caadr state) 'undefined)) (error "That variable is undefined"))
-          ((eq? (car (car state)) name) (caar (cdr state)))
-          (else (M_Var_Value name (m_cdr state))))))
+          ((eq? (l_lookup (car state) name) 'undefined) (M_Var_Value name (cdr state)))
+          (else (l_lookup name (car state))))))
 
 ; update a binding for an existing variable
 (define m_update
   (lambda (s var val)
     (cond
       ((null? s) (error "Variable binding not found."))
-      ((eq? (l_lookup (car s) var) 'not_found) (cons (car s) (m_update (cdr s) var val)))
+      ((eq? (l_lookup (car s) var) 'undefined) (cons (car s) (m_update (cdr s) var val)))
       (else (cons (l_add (l_rem (car s) var) var val) (cdr s))))))
 
 ;adds a layer to the state
