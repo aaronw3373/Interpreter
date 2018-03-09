@@ -274,7 +274,7 @@
 (define l_lookup
   (lambda (l var)
     (cond
-      ((l_null? l) 'var_not_found)
+      ((l_null? l) 'undefined)
       ((equal? var (headvar l)) (headvar l))
       (else (l_lookup (l_cdr l) var)))))
 
