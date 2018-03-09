@@ -33,7 +33,7 @@
                       ((eq?   (get_op expr) 'var)      (declaration_OP expr state return break continue))
                       ((eq?   (get_op expr) '=)        (assignment_OP expr state return break continue))
                       ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
-                      ;((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
+                      ;((eq?   (get_op expr) 'if)       (if_OP expr state return break continuev))
                       ;((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
                       ;((eq?   (get_op expr) 'throw)    (M_throw expr state return break continue))
                       (else   (error "Invalid Expression: " expr)))) ;invalid operation
@@ -80,21 +80,41 @@
         (m_update state (get_var expr) (M_arith_eval(get_val expr) state return break continue))
         (error "Asssigning varible before declaration" (get_var expr)))))
 
+
+(define condS cadr)
+(define thenS caddr)
+(define elseS cadddr)
 ;if statement (if conditional then-statement optional-else-statement)
 ; returns state return_b return_v
 (define if_OP
-  (lambda (stmt state bool ret)
-    (cond
-      ((eq? bool #t) (cons state (cons bool (cons ret '()))))
-      ((eq? (cadr (M_Boolean (cadr stmt) state)) #t)
-       (cons     (car (M_Forward_OP (caddr stmt) state bool ret))
-        (cons   (cadr (M_Forward_OP (caddr stmt) state bool ret))
-         (cons (caddr (M_Forward_OP (caddr stmt) state bool ret)) '()))))
-      (else (if (pair? (cdddr stmt)) ;if it has an else stmt
-                 (cons (car (M_Forward_OP (cadddr stmt) state bool ret))
-                (cons (cadr (M_Forward_OP (cadddr stmt) state bool ret))
-               (cons (caddr (M_Forward_OP (cadddr stmt) state bool ret)) '())))
-             (cons state (cons bool (cons ret '())))))))) ;no else statement
+  (lambda (expr state return break continue)
+    (if (= 3 (length expr))
+        ; IF
+        (if (M_Boolean (condS expr) state return break continue)
+            (M_Forward_OP (thenS expr) state return break continue)
+            state
+            )
+        ; If Else
+        (if (M_Boolean (condS expr) state return break continue)
+            (M_Forward_OP (thenS expr) state return break continue)
+            (M_Forward_OP (elseS expr) state return break continue)
+            ))))
+
+
+
+            
+   ; (cond
+    ;  ((eq? bool #t) (cons state (cons bool (cons ret '()))))
+     ; ((eq? (cadr (M_Boolean (cadr stmt) state)) #t)
+      ; (cons     (car (M_Forward_OP (caddr stmt) state bool ret))
+      ;  (cons   (cadr (M_Forward_OP (caddr stmt) state bool ret))
+       ;  (cons (caddr (M_Forward_OP (caddr stmt) state bool ret)) '()))))
+     ; (else (if (pair? (cdddr stmt)) ;if it has an else stmt
+          ;       (cons (car (M_Forward_OP (cadddr stmt) state bool ret))
+          ;      (cons (cadr (M_Forward_OP (cadddr stmt) state bool ret))
+          ;     (cons (caddr (M_Forward_OP (cadddr stmt) state bool ret)) '())))
+          ;   (cons state (cons bool (cons ret '())))))))) ;no else statement
+
 
 ;while statement (while conditional body-statement) expr is the while loop statement.
 ; returns state return_b return_v
