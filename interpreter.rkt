@@ -36,7 +36,8 @@
                       ((eq?   (get_op expr) 'if)       (if_OP expr state return break continue))
                       ((eq?   (get_op expr) 'while)    (while_OP expr state return break continue))
                       ;((eq?   (get_op expr) 'throw)    (M_throw expr state return break continue))
-                      (else   (error "Invalid Expression: " expr)))) ;invalid operation
+                      (else   (M_arith_eval_state expr state return break continue)))) ; for side effects
+                      ;(else   (error "Invalid Expression: " expr)))) ;invalid operation ;for no side effects
       (else state))))
        
 ;M_Program executes on a list of statements, doesn't add a layer just executes the list of statements in order
@@ -48,6 +49,17 @@
       (else (M_Program (cdr exprLis) (M_Forward_OP (car exprLis) state return break continue) return break continue)))))
 
 
+; for side effects
+(define M_arith_eval_state
+  (lambda (expr state return break continue)
+    (eval_left (lambda (state expr2) (M_Forward_OP expr2 state return break continue)) state (get_program_tail expr))))
+
+; for side effects
+(define eval_left
+  (lambda (f initial lis)
+    (if (null? lis)
+        initial
+        (eval_left f (f initial (car lis)) (cdr lis)))))
 
 ;;;;;;;;;;;;;;;;operations ;;;;;;;;;;;;;;
 ;Return
@@ -88,17 +100,17 @@
         ; IF
         (if (M_Boolean (condS expr) state return break continue)
             (M_Forward_OP (thenS expr)
-                          state;(M_Forward_OP (condS expr) state return break continue)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
                           return break continue)
-            state;(M_Forward_OP (condS expr) state return break continue)
+            (M_Forward_OP (condS expr) state return break continue);side effects
             )
         ; If Else
         (if (M_Boolean (condS expr) state return break continue)
             (M_Forward_OP (thenS expr)
-                          state;(M_Forward_OP (condS expr) state return break continue)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
                           return break continue)
             (M_Forward_OP (elseS expr)
-                          state;(M_Forward_OP (condS expr) state return break continue)
+                          (M_Forward_OP (condS expr) state return break continue);side effects
                           return break continue)
             ))))
 
@@ -116,7 +128,7 @@
     (if (M_Boolean condition state return break continue)
         (while_loop condition body
                     (call/cc (lambda (continue_while) (M_Forward_OP body
-                                                         state ;(M_Forward_OP condition state return break continue)
+                                                         (M_Forward_OP condition state return break continue);side effects
                                                          return break_while continue_while)))
                       return break break_while continue)
         state))) 
@@ -141,7 +153,7 @@
       ((list? expr) 
             (cond
               ;arithmatic functions
-              ;((eq? (op expr) '=)(M_value_assign expr state return break continue))  ; for side effects. not yet enabled
+              ((eq? (op expr) '=)(M_value_assign expr state return break continue))  ; for side effects. enabled but not working 100%
               ((eq? (op expr) '*)(* (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '+)(+ (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))
               ((eq? (op expr) '-) (if (null? (cddr expr))
