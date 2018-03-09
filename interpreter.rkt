@@ -130,7 +130,7 @@
               ((eq? (op expr) '%)(remainder (M_arith_eval (arg1 expr) state return break continue)(M_arith_eval (arg2 expr) state return break continue)))                
               ;forward onto boolean functions
               ((or (eq? (op expr) '==) (or (eq? (op expr) '!=) (or (eq? (op expr) '>) (or (eq? (op expr) '<) (or (eq? (op expr) '>=) (or (eq? (op expr) '<=) (or (eq? (op expr) '&&) (or (eq? (op expr) '||) (or (eq? (op expr) '!))))))))))
-                   (M_Boolean expr stat return break continuee))                   
+                   (M_Boolean expr state return break continue))                   
               (else(error "Invalid operation in: " expr)))) ;throw error if operator isn't one of those operators.
       (else (M_Var_Value expr state))))) ;look up the value of the variable
 
@@ -147,7 +147,7 @@
                    ((eq? (op expr) '>) (> (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
                    ((eq? (op expr) '<=) (<= (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))
                    ((eq? (op expr) '>=) (>= (M_arith_eval (arg1 expr) state return break continue) (M_arith_eval (arg2 expr) state return break continue)))                 
-                   ((eq? (op expr) '&&) (and (M_Boolean (arg1 expr) state) (M_Boolean (arg2 expr) state return break continue)))
+                   ((eq? (op expr) '&&) (and (M_Boolean (arg1 expr) state return break continue) (M_Boolean (arg2 expr) state return break continue)))
                    ((eq? (op expr) '||) (or (M_Boolean (arg1 expr) state return break continue) (M_Boolean (arg2 expr) state return break continue)))
                    ((eq? (op expr) '!) (not (M_Boolean (arg1 expr) state return break continue)))
                    (else (error "Invalid Condition: " expr))))

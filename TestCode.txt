@@ -1,1 +1,3 @@
-return (true && false);
+var x;
+x = 10;
+return x;
