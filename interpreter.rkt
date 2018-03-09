@@ -224,6 +224,13 @@
 ;remove layer from state
 (define m_remove_layer cdr)
 
+;executes a block of statements, in its own layer
+(define m_block
+  (lambda (block state return break continue)
+    (m_remove_layer (M_Program (cdr block) (l_add state) return
+                               (lambda (k) (break (l_rem k)))
+                               (lambda (k) (continue (l_rem k)))))))
+
 ;Layer functions. -------------------------------------------
 ;make a new layer
 (define l_new
