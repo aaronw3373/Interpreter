@@ -14,37 +14,42 @@
 ;call (interpret "TestCode.txt")
 (define interpret
   (lambda (filename)
-    (if (eq? (get_return_b (M_Program (parser filename)(state_new) #f 0)) #t) ;if return_b is true
-        (cond
-          ((eq? (get_return_v (M_Program (parser filename)(state_new) #f 0)) #t) 'true)  ; if return_v is #t the return 'TRUE
-          ((eq? (get_return_v (M_Program (parser filename)(state_new) #f 0)) #f) 'false) ; if return_v is #f the return 'FALSE
-          (else (get_return_v (M_Program (parser filename)(state_new) #f 0))))         ; else return return_v which will be an integer
-        (error "No Return Value")))) ;if return_b is false then throw error        
+    (call/cc
+     (lambda (return)
+       (M_Forward_OP (parser filename) (state_new) return #f #f)
+       
 
-
-;M_Program calls M_Forward_OP on the next expr until there return_b is true
-;reutrns (state return_b return_v)
-(define M_Program
-  (lambda (program state return_b return_v)
+;this is our M_State function, takes a parse tree fragment
+;returns the state
+(define M_Forward_OP 
+  (lambda (expr state return break continue)
     (cond
-      ((or (eq? return_b #t) (null? program)) (cons state (cons return_b (cons return_v '())))) ; nothing to evaluate or change so return as is
-      (else  (M_Program (get_program_tail program)   (get_state (M_Forward_OP (get_program_head program) state return_b return_v)) ;calls M_Program on the cdr of the program to step to the next expression until ther eis a return_b is true
-                                       (get_return_b (M_Forward_OP (get_program_head program) state return_b return_v))
-                                      (get_return_v (M_Forward_OP (get_program_head program) state return_b return_v)))))))
+      ((null? expr) state)
+      ((list? expr) (cond
+                      ((list? (get_op expr)) (M_Program stmt state return break continue)) ;if the expression is a list of expressions call M_Program
+                      ((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
+                      ((eq?   (get_op expr) 'break)    (M_break state))
+                      ((eq?   (get_op expr) 'continue) (M_continue state))
+                      ((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
+                      ((eq?   (get_op expr) 'var)      (cons (declaration_OP  expr state)  (cons return_b (cons return_v '())))) ; fix
+                      ((eq?   (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '())))) ; fix
+                      ((eq?   (get_op expr) 'return)   (cons (get_op (return_OP expr state)) (cons #t (cons (get_var (return_OP expr state)) '()))))   ;fix
+                      ((eq?   (get_op expr) 'if)       (if_OP expr state return_b return_v))  ;fix
+                      ((eq?   (get_op expr) 'while)    (while_OP expr state return_b return_v))  ;fix
+                      (else   (error "Invalid Expression: " expr)))) ;invalid operation
+      (else state))))
+       
+;M_Program executes on a list of statements, doesn't add a layer just executes the list of statements in order
+;reutrns state
+(define M_Program
+  (lambda (exprLis state return break continue)
+    (cond
+      ((null? exprLis) state)
+      (else (M_Program (cdr exprLis) (M_Forward_OP (car exprLis) state return break continue) return break continue)))))
+
+
 	 
 
-;Takes a single operation in form of list (operation args1 args2 etc...) ard forwards the list to the correct operation
-;returns state return_b return_v
-(define M_Forward_OP 
-  (lambda (expr state return_b return_v)
-    (cond
-      ((eq? return_b #t) (cons state (cons return_b (cons return_v '())))) ;if return_b is true then return state and values
-      ((eq? (get_op expr) 'var)      (cons (declaration_OP expr state)  (cons return_b (cons return_v '()))))
-      ((eq? (get_op expr) '=)        (cons (assignment_OP (get_var expr) (get_val expr) state) (cons return_b (cons return_v '()))))
-      ((eq? (get_op expr) 'return)   (cons (get_op (return_OP expr state)) (cons #t (cons (get_var (return_OP expr state)) '()))))
-      ((eq? (get_op expr) 'if)       (if_OP expr state return_b return_v))
-      ((eq? (get_op expr) 'while)    (while_OP expr state return_b return_v))
-      (else (error "Invalid Expression: " expr)))))
 
 
 ;Declaration (var variable (value optional))
