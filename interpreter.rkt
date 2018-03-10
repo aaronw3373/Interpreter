@@ -27,7 +27,9 @@
       ((list? expr) (cond
                       ((list? (get_op expr)) (M_Program expr state return break continue)) ;if the expression is a list of expressions call M_Program
                       ((eq?   (get_op expr) 'begin)    (M_block expr state return break continue))
-                      ((eq?   (get_op expr) 'break)    (break state))
+                      ((eq?   (get_op expr) 'break)
+                        ((if (eq? break #f) (error "Illegal use of break.")
+                            (break state))))
                       ((eq?   (get_op expr) 'continue) (continue state))
                       ;((eq?   (get_op expr) 'try)      (M_try expr state return break continue))
                       ((eq?   (get_op expr) 'var)      (declaration_OP expr state return break continue))
@@ -35,7 +37,7 @@
                       ((eq?   (get_op expr) 'return)   (return_OP expr state return break continue))
                       ((eq?   (get_op expr) 'if)       (if_OP expr state return break continue))
                       ((eq?   (get_op expr) 'while)    (while_OP expr state return break continue))
-                      ;((eq?   (get_op expr) 'throw)    (M_throw expr state return break continue))
+                      ;((eq?   (get_op expr) 'throw)   (M_throw expr state return break continue))
                       (else   (M_arith_eval_state expr state return break continue)))) ; for side effects
                       ;(else   (error "Invalid Expression: " expr)))) ;invalid operation ;for no side effects
       (else state))))
@@ -89,8 +91,8 @@
 (define assignment_OP
   (lambda (expr state  return break continue)
     (if (m_member? state (get_var expr))
-        (m_update state (get_var expr) (M_arith_eval(get_val expr) state return break continue))
-        (error "Asssigning varible before declaration" (get_var expr)))))
+        (m_update (M_Forward_OP (get_val expr) state return break continue) (get_var expr) (M_arith_eval (get_val expr) state return break continue))
+        (error "Assigning varible before declaration" (get_var expr)))))
 
 ;if statement (if conditional then-statement optional-else-statement)
 ; returns state  ;currently no side effects
@@ -140,6 +142,18 @@
     (m_remove_layer (M_Program (cdr block) (m_add_layer state) return
                                (lambda (k) (break (m_remove_layer k)))
                                (lambda (k) (continue (m_remove_layer k)))))))
+
+;Mstate for a try/catch?/finally? block
+(define M_try
+  (lambda (expr state return break continue throw)
+    (cond
+      ((null? expr) state)
+      (else (M_Forward_OP (cadr expr)
+                          (call/cc
+                           (lambda (throw2)
+                             (M_Forward_OP (car expr) state return break continue throw2)))
+                          return break continue throw)
+            return break continue throw))))
 
 ;;;;;;;M_Value functions;;;;;;;;;;;
 
