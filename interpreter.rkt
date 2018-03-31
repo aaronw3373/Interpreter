@@ -1,6 +1,6 @@
 #lang racket
 (require "simpleParser.scm")
-;Interpreter EECS 345
+;Interpreter EECS 345 -Part 2
 ;Aaron Weinberg and Jonathan Duffy
 
 ;exprLis - parsed program of expressions
