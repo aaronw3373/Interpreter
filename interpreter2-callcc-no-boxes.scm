@@ -15,11 +15,13 @@
 (define interpret
   (lambda (file)
     (scheme->language
-     (call/cc
-      (lambda (return)
-        (interpret-statement-list (parser file) (newenvironment) return
-                                  (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                                  (lambda (v env) (myerror "Uncaught exception thrown"))))))))
+     (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop")))
+            (throw (lambda (v env) (myerror "Uncaught exception thrown")))
+            (environment (interpret-statement-list (parser file) (newenvironment) error error error throw)))
+       (call/cc
+        (lambda (return)
+          (eval-funccall '(funcall main) environment return error error throw)
+        ))))))
 
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -43,7 +45,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-funcdecl statement environment return break continue throw))
-      ;((eq? 'funcall (statement-type statement)) (interpret-funccall statement environment return break continue throw))
+      ((eq? 'funcall (statement-type statement)) (interpret-funccall statement environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
@@ -154,6 +156,24 @@
                     (get-func-body statement)
                     (lambda (environment)
                       (prepare-environment name environment))) environment))))
+
+;function call
+(define interpret-funccall
+  (lambda (fcall environment return break continue throw)
+    (begin (eval-funccall fcall environment return break continue throw))))
+
+;evaluation functioncall used for main  ------------------- still in progress
+(define eval-funccall
+  (lambda (fcall environment return break continue throw)
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop")))
+            (throw (lambda (v env) (myerror "Uncaught exception thrown")))
+            (newenv error)) ;finish this
+
+      (call/cc
+       (lambda (return)
+         (interpret-statement-list error newenv return error error throw) ;finish this
+         )))))
+
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
