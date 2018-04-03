@@ -168,7 +168,7 @@
     (let* ((state (lookup(get-func-name fcall) environment))
            (outerenv ((get-func-env state) environment))
            (paramvals (map (lambda (v) (eval-expression v environment)) (get-func-params fcall)))
-           (newenv (new-params-layer (get-params state) paramvals outerenv))
+           (newenv (new-params-layer (get-params state) paramvals (push-frame outerenv)))
            (error (lambda (env) (myerror "Continue return or break used outside of loop")))
            (throw (lambda (v env) (myerror "Uncaught exception thrown"))))
       (call/cc
@@ -176,12 +176,23 @@
          (interpret-statement-list (get-body-func state) newenv return error error throw)
          )))))
 
+;helper function to create a new layer with parameters and return the environment
 (define new-params-layer
   (lambda (names values env)
-    (if (eq? (length names) (length values))
-        (insert (map names values) env)
-        (myerror "Wrong number of arguments to function")
+    (cond
+      ((<= (length names) 0) env)
+      ((eq? (length names) (length values)) (map insert names values (dup-list env (length names))))
+      (else (myerror "Wrong number of arguments to function"))
     )))
+
+;helper to duplicate a list n times
+(define dup-list
+  (lambda (l n)
+    (cond
+      ((<= n 0) (myerror "cannot duplicate list less than 0 times"))
+      ((eq? n 1) l)
+      (else (append l (dup-list l (- n 1)))))))
+
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
