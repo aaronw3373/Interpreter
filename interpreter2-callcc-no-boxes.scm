@@ -189,13 +189,12 @@
       ((eq? (length names) (length values)) (insert-nv-pairs-env (list names values) env))
       (else (myerror "Wrong number of arguments to function")))))
 
-;helper to duplicate a list n times
+;helper to insert name value pairs into env PARAMS: ((names)(values)) env
 (define insert-nv-pairs-env
   (lambda (l env)
     (cond
-      ((null? (car l)) l)
-      (else (insert-nv-pairs-env (list (cdr (car l)) (cdr (cadr l))) (insert (caar l) (car(cadr l)) env)     )))))
-
+      ((null? (car l)) env)
+      (else (insert-nv-pairs-env (list (cdr (car l)) (cdr (cadr l))) (insert (caar l) (caadr l) env)     )))))
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
