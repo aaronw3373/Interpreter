@@ -162,18 +162,26 @@
   (lambda (fcall environment return break continue throw)
     (begin (eval-funccall fcall environment return break continue throw))))
 
-;evaluation functioncall used for main  ------------------- still in progress
+;evaluation functioncall used for main
 (define eval-funccall
   (lambda (fcall environment return break continue throw)
-    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop")))
-            (throw (lambda (v env) (myerror "Uncaught exception thrown")))
-            (newenv error)) ;finish this
-
+    (let* ((state (lookup(get-func-name fcall) environment))
+           (outerenv ((get-func-env state) environment))
+           (paramvals (map (lambda (v) (eval-expression v environment)) (get-func-params fcall)))
+           (newenv (new-params-layer (get-params state) paramvals outerenv))
+           (error (lambda (env) (myerror "Continue return or break used outside of loop")))
+           (throw (lambda (v env) (myerror "Uncaught exception thrown"))))
       (call/cc
        (lambda (return)
-         (interpret-statement-list error newenv return error error throw) ;finish this
+         (interpret-statement-list (get-body-func state) newenv return error error throw)
          )))))
 
+(define new-params-layer
+  (lambda (names values env)
+    (if (eq? (length names) (length values))
+        (insert (map names values) env)
+        (myerror "Wrong number of arguments to function")
+    )))
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
@@ -259,7 +267,10 @@
 (define get-func-name operand1)
 (define get-param-list operand2)
 (define get-func-body operand3)
-
+(define get-func-env operand2)
+(define get-func-params cddr)
+(define get-params car)
+(define get-body-func cadr)
 (define catch-var
   (lambda (catch-statement)
     (car (operand1 catch-statement))))
@@ -404,7 +415,7 @@
 (define prepare-environment
   (lambda (name state)
     (if (null? state) (myerror "error: Function name not found.")
-        (if(not (exists-in-list? (car state)))
+        (if(not (exists-in-list? name (car state)))
            (prepare-environment name (cdr state)) state))))
 
 ; Functions to convert the Scheme #t and #f to our languages true and false, and back.
