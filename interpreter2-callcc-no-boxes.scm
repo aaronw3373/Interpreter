@@ -359,6 +359,12 @@
       ((not (exists-in-list? var (variables frame))) (myerror "error: undefined variable" var))
       (else (language->scheme (get-value (indexof var (variables frame)) (store frame)))))))
 
+(define exists-in-frame?
+  (lambda (var frame)
+    (cond
+      ((not (exists-in-list? var (variables frame))) #f)
+      (else #t))))
+
 ; Get the location of a name in a list of names
 (define indexof
   (lambda (var l)
@@ -426,7 +432,7 @@
 (define prepare-environment
   (lambda (name state)
     (if (null? state) (myerror "error: Function name not found.")
-        (if(not (exists-in-list? name (car state)))
+        (if(not (exists-in-frame? name (car state)))
            (prepare-environment name (cdr state)) state))))
 
 ; Functions to convert the Scheme #t and #f to our languages true and false, and back.
