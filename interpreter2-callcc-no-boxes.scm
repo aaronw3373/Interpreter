@@ -51,38 +51,42 @@
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return)
-    (return (eval-expression (get-expr statement) environment))))
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
+    (return (eval-expression (get-expr statement) environment return error error error)))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
   (lambda (statement environment)
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (if (exists-declare-value? statement)
-        (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment) environment)
-        (insert (get-declare-var statement) 'novalue environment))))
+        (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment error error error error) environment)
+        (insert (get-declare-var statement) 'novalue environment)))))
 
 ; Updates the environment to add an new binding for a variable
 (define interpret-assign
   (lambda (statement environment)
-    (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment) environment)))
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
+    (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment error error error error) environment))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
   (lambda (statement environment return break continue throw)
     (cond
-      ((eval-expression (get-condition statement) environment) (interpret-statement (get-then statement) environment return break continue throw))
+      ((eval-expression (get-condition statement) environment return break continue throw) (interpret-statement (get-then statement) environment return break continue throw))
       ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw))
       (else environment))))
 
 ; Interprets a while loop.  We must create break and continue continuations for this loop
 (define interpret-while
   (lambda (statement environment return throw)
+    (let* ((error (lambda (env) (myerror "Continue used outside of loop"))))
     (call/cc
      (lambda (break)
        (letrec ((loop (lambda (condition body environment)
-                        (if (eval-expression condition environment)
+                        (if (eval-expression condition environment return break error throw)
                             (loop condition body (interpret-statement body environment return break (lambda (env) (break (loop condition body env))) throw))
                          environment))))
-         (loop (get-condition statement) (get-body statement) environment))))))
+         (loop (get-condition statement) (get-body statement) environment)))))))
 
 ; Interprets a block.  The break, continue, and throw continuations must be adjusted to pop the environment
 (define interpret-block
@@ -97,7 +101,8 @@
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw)
-    (throw (eval-expression (get-expr statement) environment) environment)))
+    (let* ((error (lambda (env) (myerror "Continue used outside of loop"))))
+    (throw (eval-expression (get-expr statement) environment error error error throw) environment))))
 
 ; Interpret a try-catch-finally block
 
@@ -167,7 +172,7 @@
   (lambda (fcall environment return break continue throw)
     (let* ((state (lookup(get-func-name fcall) environment))
            (outerenv ((get-func-env state) environment))
-           (paramvals (map (lambda (v) (eval-expression v environment)) (get-func-params fcall)))
+           (paramvals (map (lambda (v) (eval-expression v environment return break continue throw)) (get-func-params fcall)))
            (newenv (new-params-layer (get-params state) paramvals (push-frame outerenv)))
            (error (lambda (env) (myerror "Continue return or break used outside of loop")))
            (throw (lambda (v env) (myerror "Uncaught exception thrown"))))
@@ -181,7 +186,7 @@
   (lambda (names values env)
     (cond
       ((<= (length names) 0) env)
-      ((eq? (length names) (length values)) (map insert names values (dup-list env (length names))))
+      ((eq? (length names) (length values)) (map insert names values (list (dup-list env (length names)))))
       (else (myerror "Wrong number of arguments to function"))
     )))
 
@@ -196,12 +201,13 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment)
-    (cond
+  (lambda (expr environment return break continue throw)
+    (cond     
       ((number? expr) expr)
       ((eq? expr 'true) #t)
       ((eq? expr 'false) #f)
       ((not (list? expr)) (lookup expr environment))
+      ((eq? (operator expr) 'funcall) (eval-funccall expr environment return break continue throw))
       (else (eval-operator expr environment)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
@@ -209,29 +215,31 @@
 ; to add side effects to the interpreter
 (define eval-operator
   (lambda (expr environment)
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (cond
-      ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment)))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
-      (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment) environment)))))
+      ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment error error error error)))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment error error error error)))
+      (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment error error error error) environment))))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
   (lambda (expr op1value environment)
+    (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (cond
-      ((eq? '+ (operator expr)) (+ op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '- (operator expr)) (- op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '* (operator expr)) (* op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '/ (operator expr)) (quotient op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '% (operator expr)) (remainder op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '== (operator expr)) (isequal op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '!= (operator expr)) (not (isequal op1value (eval-expression (operand2 expr) environment))))
-      ((eq? '< (operator expr)) (< op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '> (operator expr)) (> op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '<= (operator expr)) (<= op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment)))
-      ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment)))
-      (else (myerror "Unknown operator:" (operator expr))))))
+      ((eq? '+ (operator expr)) (+ op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '- (operator expr)) (- op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '* (operator expr)) (* op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '/ (operator expr)) (quotient op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '% (operator expr)) (remainder op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '== (operator expr)) (isequal op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '!= (operator expr)) (not (isequal op1value (eval-expression (operand2 expr) environment error error error error))))
+      ((eq? '< (operator expr)) (< op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '> (operator expr)) (> op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '<= (operator expr)) (<= op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment error error error error)))
+      ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment error error error error)))
+      (else (myerror "Unknown operator:" (operator expr)))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
 (define isequal
