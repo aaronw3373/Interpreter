@@ -186,17 +186,15 @@
   (lambda (names values env)
     (cond
       ((<= (length names) 0) env)
-      ((eq? (length names) (length values)) (map insert names values (list (dup-list env (length names)))))
-      (else (myerror "Wrong number of arguments to function"))
-    )))
+      ((eq? (length names) (length values)) (insert-nv-pairs-env (list names values) env))
+      (else (myerror "Wrong number of arguments to function")))))
 
 ;helper to duplicate a list n times
-(define dup-list
-  (lambda (l n)
+(define insert-nv-pairs-env
+  (lambda (l env)
     (cond
-      ((<= n 0) (myerror "cannot duplicate list less than 0 times"))
-      ((eq? n 1) l)
-      (else (append l (dup-list l (- n 1)))))))
+      ((null? (car l)) l)
+      (else (insert-nv-pairs-env (list (cdr (car l)) (cdr (cadr l))) (insert (caar l) (car(cadr l)) env)     )))))
 
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
