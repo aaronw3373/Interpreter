@@ -6,8 +6,6 @@
  #lang racket
 (require "classParser.scm")
 
-
-
 ; An interpreter for the simple language that uses call/cc for the continuations.  Does not handle side effects.
 (define call/cc call-with-current-continuation)
 
@@ -17,17 +15,37 @@
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  The returned value is in the environment.
 (define interpret
-  (lambda (file)
+  (lambda (file class)
     (scheme->language
      (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop")))
             (throw (lambda (v env) (myerror "Uncaught exception thrown")))
-            (environment (interpret-statement-list (parser file) (newenvironment) error error error throw)))
+            (environment (interpret-outer (parser file) (newenvironment) error error error throw (cont-init))))
        (call/cc
         (lambda (return)
-          (eval-funccall '(funcall main) environment return error error throw)
+          (eval-funccall '(funcall main) environment return error error throw (cont-init))
         ))))))
 
-; interprets a list of statements.  The environment from each statement is used for the next ones.
+;outer interpreter
+(define interpret-outer
+  (lambda (statement-list environment return break continue throw cont)
+    (cond
+      ((null? statement-list) environment)
+      ((eq? (caar statement-list) 'class) (interpret-outer (cdr statementlist) (interpret-class (car statement-list environment return break continue throw cont)) return break continue throw cont))
+      (else (myerror "you can only declare classes in the global scope!!!!")))))
+
+;mvalue class
+(define interpret-class
+  (lambda (stmt environment return break continue throw cont)
+    (let* ((name (cadr stmt))
+           (extends (caddr stmt))
+           (parent (if (null? extends) 'null (lookup-variable (cadr extends) environment)))
+           (body (cadddr stmt))
+           (initial (class-new parent name))
+          ; (class (Mclass_stmtlist body environment (ctx-currclass-set (ctx-class-set ctx initial) initial)))
+           )
+      (insert name class environment))))
+
+ ; interprets a list of statements.  The environment from each statement is used for the next ones.
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
@@ -208,20 +226,31 @@
     (list 'class daddy name
           (if (eq? daddy 'null)
               (newenvironment)
-              (class-fields daddy))
+              (cont-class-fields daddy))
           (if (eq? daddy 'null)
               (newenvironment)
-              (class-methods daddy))
+              (cont-class-methods daddy))
           (if (eq? daddy 'null)
               (newframe)
-              (class-instance-names daddy)))))
+              (cont-class-instance-names daddy)))))
 
-(define class-fields cadddr)
-(define class-methods (lambda (v) (list-ref v 4)))
-(define class-instance-names (lambda (v) (list-ref v 5)))
+(define cont-class-fields cadddr)
+(define cont-class-methods (lambda (v) (list-ref v 4)))
+(define cont-class-instance-names (lambda (v) (list-ref v 5)))
+(define cont-currclass (lambda (v) (list-ref v 6)))
+(define inst-class cadr)
 
+(define interpret-dot
+  (lambda (expr state cont)
+    (lookup-dot-var expr state cont)))    
 
+(define lookup-dot-var
+  (lambda (expr state cont)
+    (let ((inst-class (dot-inst-class (cadr expr) state (cont-currclass cont) cont)))
+      (variable-lookup (caddr expr) (newenvironment) (cadr inst-class) (car inst-class)))))
 
+(define variable-lookup cadr); TODO something important
+(define dot-inst-class cadr);  TODO something important
 
 
 
