@@ -50,6 +50,8 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-funcdecl statement environment return break continue throw))
       ((eq? 'funcall (statement-type statement)) (interpret-funccall statement environment return break continue throw))
+      ((eq? 'dot (statement-type statement)) (interpret-dot statement environment return break continue throw))
+      ((eq? 'new (statement-type statement)) (interpret-new statement environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
