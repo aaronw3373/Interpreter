@@ -1,7 +1,11 @@
+;Aaron Weinberg
+;John Duffy
+;4/2/2018
+;EECS 345 PLCs
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
  #lang racket
-(require "functionParser.scm")
-;(load "simpleParser.scm")
+(require "classParser.scm")
+
 
 
 ; An interpreter for the simple language that uses call/cc for the continuations.  Does not handle side effects.
@@ -195,6 +199,34 @@
     (cond
       ((null? (car l)) env)
       (else (insert-nv-pairs-env (list (cdr (car l)) (cdr (cadr l))) (insert (caar l) (caadr l) env)     )))))
+
+
+
+;================================ Class Shiz - fuck it ========================
+(define class-new
+  (lambda (daddy name)
+    (list 'class daddy name
+          (if (eq? daddy 'null)
+              (newenvironment)
+              (class-fields daddy))
+          (if (eq? daddy 'null)
+              (newenvironment)
+              (class-methods daddy))
+          (if (eq? daddy 'null)
+              (newframe)
+              (class-instance-names daddy)))))
+
+(define class-fields cadddr)
+(define class-methods (lambda (v) (list-ref v 4)))
+(define class-instance-names (lambda (v) (list-ref v 5)))
+
+
+
+
+
+
+
+;=============================================================================
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression

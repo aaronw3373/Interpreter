@@ -1,5 +1,5 @@
 #lang racket
-(require "simpleParser.scm")
+(require "classParser.scm")
 ;Interpreter EECS 345 -Part 2
 ;Aaron Weinberg and Jonathan Duffy
 
