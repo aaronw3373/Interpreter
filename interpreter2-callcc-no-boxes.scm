@@ -103,13 +103,14 @@
                                          return
                                          (lambda (env) (break (pop-frame env)))
                                          (lambda (env) (continue (pop-frame env)))
-                                         (lambda (v env) (throw v (pop-frame env)))))))
+                                         (lambda (v env) (throw v (pop-frame env)))
+                                         (lambda (env) (cont (pop-frame cont)))))))
 
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw cont)
     (let* ((error (lambda (env) (myerror "Continue used outside of loop"))))
-    (throw (eval-expression (get-expr statement) environment error error error throw) environment))))
+    (throw (eval-expression (get-expr statement) environment error error error throw) environment cont))))
 
 ; Interpret a try-catch-finally block
 
@@ -130,7 +131,7 @@
                                                  (lambda (env2) (break (pop-frame env2))) 
                                                  (lambda (env2) (continue (pop-frame env2))) 
                                                  (lambda (v env2) (throw v (pop-frame env2)))))
-                                     return break continue throw)))))))
+                                     return break continue throw cont)))))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
 ;  We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
@@ -147,7 +148,7 @@
               (new-throw (create-throw-catch-continuation (get-catch statement) environment return break continue throw jump finally-block)))
          (interpret-block finally-block
                           (interpret-block try-block environment new-return new-break new-continue new-throw)
-                          return break continue throw))))))
+                          return break continue throw cont))))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
