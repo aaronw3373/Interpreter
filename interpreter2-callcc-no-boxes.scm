@@ -254,6 +254,10 @@
   (lambda (cont currclass)
     (replace-in-list cont 2 currclass)))
 
+(define cont-init
+  (lambda ()
+    (list 'null 'null 'null)))
+
 
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
