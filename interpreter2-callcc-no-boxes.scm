@@ -29,40 +29,40 @@
 
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 (define interpret-statement-list
-  (lambda (statement-list environment return break continue throw)
+  (lambda (statement-list environment return break continue throw cont)
     (if (null? statement-list)
         environment
-        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
+        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw cont) return break continue throw cont))))
 
 ; interpret a statement in the environment with continuations for return, break, continue, throw
 (define interpret-statement
-  (lambda (statement environment return break continue throw)
+  (lambda (statement environment return break continue throw cont)
     (cond
-      ((eq? 'return (statement-type statement)) (interpret-return statement environment return))
-      ((eq? 'var (statement-type statement)) (interpret-declare statement environment))
-      ((eq? '= (statement-type statement)) (interpret-assign statement environment))
-      ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
-      ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw))
-      ((eq? 'continue (statement-type statement)) (continue environment))
-      ((eq? 'break (statement-type statement)) (break environment))
-      ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw))
-      ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
-      ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
-      ((eq? 'function (statement-type statement)) (interpret-funcdecl statement environment return break continue throw))
-      ((eq? 'funcall (statement-type statement)) (interpret-funccall statement environment return break continue throw))
-      ((eq? 'dot (statement-type statement)) (interpret-dot statement environment return break continue throw))
-      ((eq? 'new (statement-type statement)) (interpret-new statement environment return break continue throw))
+      ((eq? 'return (statement-type statement)) (interpret-return statement environment return cont))
+      ((eq? 'var (statement-type statement)) (interpret-declare statement environment cont))
+      ((eq? '= (statement-type statement)) (interpret-assign statement environment cont))
+      ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw cont))
+      ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw cont))
+      ((eq? 'continue (statement-type statement)) (continue environment cont))
+      ((eq? 'break (statement-type statement)) (break environment cont))
+      ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw cont))
+      ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw cont))
+      ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw cont))
+      ((eq? 'function (statement-type statement)) (interpret-funcdecl statement environment return break continue throw cont))
+      ((eq? 'funcall (statement-type statement)) (interpret-funccall statement environment return break continue throw cont))
+      ((eq? 'dot (statement-type statement)) (interpret-dot statement environment return break continue throw cont))
+      ((eq? 'new (statement-type statement)) (interpret-new statement environment return break continue throw cont))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
-  (lambda (statement environment return)
+  (lambda (statement environment return cont)
     (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (return (eval-expression (get-expr statement) environment return error error error)))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
-  (lambda (statement environment)
+  (lambda (statement environment cont)
     (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (if (exists-declare-value? statement)
         (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment error error error error) environment)
@@ -70,33 +70,34 @@
 
 ; Updates the environment to add an new binding for a variable
 (define interpret-assign
-  (lambda (statement environment)
+  (lambda (statement environment cont)
     (let* ((error (lambda (env) (myerror "Continue return or break used outside of loop"))))
     (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment error error error error) environment))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
-  (lambda (statement environment return break continue throw)
+  (lambda (statement environment return break continue throw cont)
     (cond
-      ((eval-expression (get-condition statement) environment return break continue throw) (interpret-statement (get-then statement) environment return break continue throw))
-      ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw))
+      ((eval-expression (get-condition statement) environment return break continue throw) (interpret-statement (get-then statement) environment return break continue throw cont))
+      ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw cont))
       (else environment))))
 
 ; Interprets a while loop.  We must create break and continue continuations for this loop
 (define interpret-while
-  (lambda (statement environment return throw)
+  (lambda (statement environment return throw cont)
     (let* ((error (lambda (env) (myerror "Continue used outside of loop"))))
     (call/cc
      (lambda (break)
        (letrec ((loop (lambda (condition body environment)
-                        (if (eval-expression condition environment return break error throw)
-                            (loop condition body (interpret-statement body environment return break (lambda (env) (break (loop condition body env))) throw))
+                        (if (eval-expression condition environment return break error throw cont)
+                            (loop condition body (interpret-statement body environment return break (lambda (env) (break (loop condition body env))) throw cont))
                          environment))))
          (loop (get-condition statement) (get-body statement) environment)))))))
 
-; Interprets a block.  The break, continue, and throw continuations must be adjusted to pop the environment
+; Interprets a block.  The break, continue, and throw continuations must be adjusted to pop the environmen
+;*************what to do with cont here
 (define interpret-block
-  (lambda (statement environment return break continue throw)
+  (lambda (statement environment return break continue throw cont)
     (pop-frame (interpret-statement-list (cdr statement)
                                          (push-frame environment)
                                          return
@@ -106,7 +107,7 @@
 
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
-  (lambda (statement environment throw)
+  (lambda (statement environment throw cont)
     (let* ((error (lambda (env) (myerror "Continue used outside of loop"))))
     (throw (eval-expression (get-expr statement) environment error error error throw) environment))))
 
@@ -114,6 +115,7 @@
 
 ; Create a continuation for the throw.  If there is no catch, it has to interpret the finally block, and once that completes throw the exception.
 ;   Otherwise, it interprets the catch block with the exception bound to the thrown value and interprets the finally block when the catch is done
+;*****************what to do with cont here
 (define create-throw-catch-continuation
   (lambda (catch-statement environment return break continue throw jump finally-block)
     (cond
@@ -132,8 +134,9 @@
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
 ;  We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
+;************************ what to do with cont here
 (define interpret-try
-  (lambda (statement environment return break continue throw)
+  (lambda (statement environment return break continue throw cont)
     (call/cc
      (lambda (jump)
        (let* ((finally-block (make-finally-block (get-finally statement)))
@@ -160,7 +163,7 @@
 
 ;declare function
 (define interpret-funcdecl
-  (lambda (statement environment return break continue throw)
+  (lambda (statement environment return break continue throw cont)
     (let ((name (get-func-name statement)))
       (insert name
               (list (get-param-list statement)
@@ -170,12 +173,12 @@
 
 ;function call
 (define interpret-funccall
-  (lambda (fcall environment return break continue throw)
-    (begin (eval-funccall fcall environment return break continue throw))))
+  (lambda (fcall environment return break continue throw cont)
+    (begin (eval-funccall fcall environment return break continue throw cont))))
 
 ;evaluation functioncall used for main
 (define eval-funccall
-  (lambda (fcall environment return break continue throw)
+  (lambda (fcall environment return break continue throw cont)
     (let* ((state (lookup(get-func-name fcall) environment))
            (outerenv ((get-func-env state) environment))
            (paramvals (map (lambda (v) (eval-expression v environment return break continue throw)) (get-func-params fcall)))
@@ -184,7 +187,7 @@
            (throw (lambda (v env) (myerror "Uncaught exception thrown"))))
       (call/cc
        (lambda (return)
-         (interpret-statement-list (get-body-func state) newenv return error error throw)
+         (interpret-statement-list (get-body-func state) newenv return error error throw cont)
          )))))
 
 ;helper function to create a new layer with parameters and return the environment
@@ -233,9 +236,6 @@
 ;====================== Continuations ========================================
 ; There are a lot of them now, so we're wrapping the new ones up.
 
-;define new continuation list
-(define cont-new list)
-
 ;access items in continuation list
 (define cont-class car)
 (define cont-inst cadr)
@@ -257,13 +257,13 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment return break continue throw)
+  (lambda (expr environment return break continue throw cont)
     (cond     
       ((number? expr) expr)
       ((eq? expr 'true) #t)
       ((eq? expr 'false) #f)
       ((not (list? expr)) (lookup expr environment))
-      ((eq? (operator expr) 'funcall) (eval-funccall expr environment return break continue throw))
+      ((eq? (operator expr) 'funcall) (eval-funccall expr environment return break continue throw cont))
       (else (eval-operator expr environment)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
