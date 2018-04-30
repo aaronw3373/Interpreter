@@ -230,6 +230,31 @@
 
 ;=============================================================================
 
+;====================== Continuations ========================================
+; There are a lot of them now, so we're wrapping the new ones up.
+
+;define new continuation list
+(define cont-new list)
+
+;access items in continuation list
+(define cont-class car)
+(define cont-inst cadr)
+(define cont-currclass caddr)
+
+(define cont-class-repl
+  (lambda (cont class)
+    (cons class (cdr cont))))
+
+(define cont-inst-repl
+  (lambda (cont inst)
+    (replace-in-list cont 1 inst)))
+
+(define cont-currclass-repl
+  (lambda (cont currclass)
+    (replace-in-list cont 2 currclass)))
+
+
+
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
   (lambda (expr environment return break continue throw)
@@ -321,9 +346,17 @@
 (define get-func-params cddr)
 (define get-params car)
 (define get-body-func cadr)
+  
 (define catch-var
   (lambda (catch-statement)
     (car (operand1 catch-statement))))
+  
+;returns the same list with a new value replacing the old value at the specified index.
+(define replace-in-list
+  (lambda (list i x)
+    (if (= 0 i)
+        (cons val (cdr list))
+        (cons (car list) (replace (cdr list) (- i 1) x)))))
 
 
 ;------------------------
