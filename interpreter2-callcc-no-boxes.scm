@@ -212,7 +212,7 @@
            (instance (cadr cls))
           ; (instance ((list-ref closure 2) instance))
            (class (caddr cls))
-           (currclass ((cadddr closure) state))
+           (currclass ((cadddr closure) environment))
            (class (if (eq? 'null instance) currclass class))
           ; (outerenv ((caddr closure) state))
            ;(newstate (cons (new-layer-from-arglist (car closure) (cddr funccall) state ctx) outerenv))
@@ -567,10 +567,10 @@
         (lookup-dot-func stmt environment return break continue throw cont)
         (list (function-lookup stmt environment (cont-class cont) (cont-inst cont)) (cont-inst cont) (cont-class cont)))))
 
-(define lookup-dot-var
-  (lambda (stmt environment cont)
-    (let ((cont-inst-class (dot-inst-class (cadr stmt) environment (cont-currclass cont) cont)))
-      (variable-lookup (caddr stmt) (newenvironment) (cadr inst-class) (car inst-class)))))
+(define lookup-dot-func
+  (lambda (stmt environment return break continue throw cont)
+    (let ((iclass (dot-inst-class (cadr stmt) environment (cont-class cont) break continue throw cont)))
+      (cons (function-lookup (caddr stmt) (newenvironment) (cadr iclass) (car iclass)) iclass))))
 
 (define function-lookup
   (lambda (name environment class inst)
