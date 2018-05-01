@@ -41,9 +41,18 @@
            (parent (if (null? extends) 'null (lookup-variable (cadr extends) environment)))
            (body (cadddr stmt))
            (initial (class-new parent name))
-          ; (class (Mclass_stmtlist body environment (ctx-currclass-set (ctx-class-set ctx initial) initial)))
+           (class (interpret-class-statement-list body environment (cont-currclass-repl (cont-class-repl cont initial) initial)))
            )
       (insert name class environment))))
+
+(define interpret-class-statement-list
+  (lambda (stmt-list environment return break continue throw cont)
+    (if (null? stmt-list)
+        (cont-class cont)
+        (interpret-class-statement-list (cdr stmt-list)
+                                        environment
+                                        (let ((class-new (Mclass (car stmt-list) environment return break continue throw cont)))
+                                          (cont-currlass-repl (cont-class-repl cont class-new) class-new))))))
 
  ; interprets a list of statements.  The environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -249,10 +258,11 @@
               (newframe)
               (cont-class-instance-names daddy)))))
 
+(define cont-class-parent cadr)
+(define cont-class-name caddr)
 (define cont-class-fields cadddr)
 (define cont-class-methods (lambda (v) (list-ref v 4)))
 (define cont-class-instance-names (lambda (v) (list-ref v 5)))
-(define cont-currclass (lambda (v) (list-ref v 6)))
 (define inst-class cadr)
 
 (define interpret-dot
@@ -264,11 +274,77 @@
     (let ((inst-class (dot-inst-class (cadr expr) state (cont-currclass cont) cont)))
       (variable-lookup (caddr expr) (newenvironment) (cadr inst-class) (car inst-class)))))
 
-(define variable-lookup cadr); TODO something important
+(define variable-lookup
+  (lambda (name environment class inst)
+    (cond
+     ((exists? environment name) (lookup state name))
+     (else (myerror "doesn't fucking work")))))
+
 (define dot-inst-class cadr);  TODO something important
 
+(define class-fields-repl
+  (lambda (class fields)
+    (replace-in-list class 3 fields)))
 
+(define class-methods-repl
+  (lambda (class methods)
+    (replace-in-list class 4 methods)))
 
+(define class-instance-names-repl
+  (lambda (class instance-names)
+    (replace-in-list class 5 instance-names)))
+
+(define Mclass
+  (lambda (stmt environment return break continue throw cont)
+    (cond
+      ((null? stmt) (cont-class cont))
+      ((list? stmt) (cond
+                      ((eq? 'static-function (statement-type stmt)) (Mclass-funcdecl stmt environment #t return break continue throw cont))
+                      ((eq? 'function (statement-type stmt)) (Mclass-funcdecl stmt environment #f return break continue throw cont))
+                      ((eq? 'static-var (statement-type stmt)) (Mclass-staticdecl stmt environment return break continue throw cont))
+                      ((eq? 'var (statement-type stmt)) (Mclass-decl stmt environment return break continue throw cont))
+                      (else (error "Invalid statement when declaring class."))))
+      (else (cont-class return break continue throw cont)))))
+                      
+(define Mclass-funcdecl
+  (lambda (funcdecl environment static return break continue throw cont)
+    (let* ((name (cadr funcdecl))
+           (class (cont-class cont))
+           (classname (caddr class)))
+      (class-methods-repl
+       class
+       (insert (cont-class-methods class)
+               name
+               (list (caddr funcdecl)
+                     (cadddr funcdecl)
+                     (lambda (environment)
+                       (let ((class (lookup environment classname)))
+                         (prepare-environment classname environment)))
+                     (lambda (environment)
+                       (lookup environment classname))
+                     (if static
+                         (lambda (v) 'null)
+                         (lambda (v) v))))))))
+
+(define Mclass-decl
+  (lambda (stmt environment return break continue throw cont)
+    (let* ((class (cont-class cont)))
+      (class-instance-names-repl
+       class
+       (insert (cont-class-instance-names class)
+               (cadr stmt)
+               (if (= 3 (length stmt))
+                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined))))))
+
+(define Mclass-staticdecl
+  (lambda (stmt environment return break continue throw cont)
+    (let* ((class (cont-class cont)))
+      (class-fields-repl
+       class
+       (insert (cont-class-fields class)
+               (cadr stmt)
+               (if (= 3 (length stmt))
+                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined))))))
 
 ;=============================================================================
 
