@@ -30,7 +30,7 @@
   (lambda (statement-list environment return break continue throw cont)
     (cond
       ((null? statement-list) environment)
-      ((eq? (caar statement-list) 'class) (interpret-outer (cdr statement-list) (interpret-class (car statement-list environment return break continue throw cont)) return break continue throw cont))
+      ((eq? (caar statement-list) 'class) (interpret-outer (cdr statement-list) (interpret-class (car statement-list) environment return break continue throw cont) return break continue throw cont))
       (else (myerror "you can only declare classes in the global scope!!!!")))))
 
 ;mvalue class
@@ -41,7 +41,7 @@
            (parent (if (null? extends) 'null (lookup-variable (cadr extends) environment)))
            (body (cadddr stmt))
            (initial (class-new parent name))
-           (class (interpret-class-statement-list body environment (cont-currclass-repl (cont-class-repl cont initial) initial)))
+           (class (interpret-class-statement-list body environment return break continue throw (cont-currclass-repl (cont-class-repl cont initial) initial)))
            )
       (insert name class environment))))
 
@@ -50,7 +50,7 @@
     (if (null? stmt-list)
         (cont-class cont)
         (interpret-class-statement-list (cdr stmt-list)
-                                        environment
+                                        environment return break continue throw
                                         (let ((class-new (Mclass (car stmt-list) environment return break continue throw cont)))
                                           (cont-currclass-repl (cont-class-repl cont class-new) class-new))))))
 
@@ -313,8 +313,7 @@
            (classname (caddr class)))
       (class-methods-repl
        class
-       (insert (cont-class-methods class)
-               name
+       (insert name          
                (list (caddr funcdecl)
                      (cadddr funcdecl)
                      (lambda (environment)
@@ -324,27 +323,30 @@
                        (lookup environment classname))
                      (if static
                          (lambda (v) 'null)
-                         (lambda (v) v))))))))
+                         (lambda (v) v)))
+               (cont-class-methods class) )))))
 
 (define Mclass-decl
   (lambda (stmt environment return break continue throw cont)
     (let* ((class (cont-class cont)))
       (class-instance-names-repl
        class
-       (insert (cont-class-instance-names class)
+       (insert
                (cadr stmt)
                (if (= 3 (length stmt))
-                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined))))))
+                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined)
+               (cont-class-instance-names class))))))
 
 (define Mclass-staticdecl
   (lambda (stmt environment return break continue throw cont)
     (let* ((class (cont-class cont)))
       (class-fields-repl
        class
-       (insert (cont-class-fields class)
-               (cadr stmt)
+       (insert (cadr stmt)           
                (if (= 3 (length stmt))
-                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined))))))
+                   (interpret-statement (caddr stmt) environment return break continue throw cont) 'undefined)
+               (cont-class-fields class)
+               )))))
 
 ;=============================================================================
 
@@ -539,7 +541,7 @@
 (define lookup-in-env
   (lambda (var environment)
     (cond
-      ((null? environment) (myerror "error: undefined variable" var))
+      ((null? environment) (myerror "error: Undefined variable:" var))
       ((exists-in-list? var (variables (topframe environment))) (lookup-in-frame var (topframe environment)))
       (else (lookup-in-env var (cdr environment))))))
 
