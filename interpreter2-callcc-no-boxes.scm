@@ -22,7 +22,7 @@
             (environment (interpret-outer (parser file) (newenvironment) error error error throw (cont-init))))
        (call/cc
         (lambda (return)
-          (eval-funccall '(funcall main) environment return error error throw (cont-init))
+          (eval-main class environment return error error throw (cont-init))
         ))))))
 
 ;outer interpreter
@@ -217,6 +217,15 @@
        (lambda (return)
          (interpret-statement-list (get-body-func state) newenv return error error throw cont)
          )))))
+
+;evaluate the main function call
+(define eval-main
+  (lambda (class-name environment return break continue throw cont)
+    (cond
+      ((not (exists? class-name environment)) (myerror "Undefined Class"))
+      (else (eval-funccall '(funcall main) environment return break continue throw cont)))))
+
+
 
 ;helper function to create a new layer with parameters and return the environment
 (define new-params-layer
