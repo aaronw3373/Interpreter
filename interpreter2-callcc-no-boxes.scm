@@ -210,15 +210,10 @@
     (let* ((cls (lookup-func (cadr fcall) environment return break continue throw cont))
            (closure (car cls))
            (instance (cadr cls))
-          ; (instance ((list-ref closure 2) instance))
+           (instance ((list-ref closure 2) instance))
            (class (caddr cls))
            (currclass ((cadddr closure) environment))
-           (class (if (eq? 'null instance) currclass class))
-          ; (outerenv ((caddr closure) state))
-           ;(newstate (cons (new-layer-from-arglist (car closure) (cddr funccall) state ctx) outerenv))
-         ;  (err (lambda (v) (error "Can't break or continue here.")))
-
-           
+           (class (if (eq? 'null instance) currclass class))           
            (state (lookup(get-func-name fcall) environment))
            (outerenv ((get-func-env state) environment))
            (paramvals (map (lambda (v) (eval-expression v environment return break continue throw)) (get-func-params fcall)))
@@ -264,7 +259,7 @@
 
 
 
-;================================ Class Shiz - fuck it ========================
+;================================ Class Shiz  ========================
 (define class-new
   (lambda (daddy name)
     (list 'class daddy name
@@ -302,7 +297,7 @@
      ((and (not (eq? 'null inst)) ; don't attempt to lookup if no instance
            (exists? name (list (car (cont-class-instance-names class)) (inst-values inst))))
       (lookup-in-env (list (car (cont-class-instance-names class)) (inst-values inst)) name))
-     (else (myerror "doesn't fucking work")))))
+     (else (myerror "doesn't f*****g work")))))
 
 (define dot-inst-class cadr) ;TODO
 (define interpret-new cadr); TODO something important
@@ -576,8 +571,13 @@
   (lambda (name environment class inst)
     (cond
       ((exists-in-frame? name environment) (lookup-in-frame environment name))
-      ((exists? name environment) (lookup-variable name environment))
+      ((env-member? (cont-class-methods class) name) (lookup-variable name environment))
       (else (error "Function not found: " name)))))
+
+(define layer-member?
+  (lambda (layer var)
+    (not (= -1 (index-of (car layer) var)))))
+(define env-member? layer-member?)
 
 ; Return the value bound to a variable in the environment
 (define lookup-in-env
