@@ -30,7 +30,7 @@
   (lambda (statement-list environment return break continue throw cont)
     (cond
       ((null? statement-list) environment)
-      ((eq? (caar statement-list) 'class) (interpret-outer (cdr statementlist) (interpret-class (car statement-list environment return break continue throw cont)) return break continue throw cont))
+      ((eq? (caar statement-list) 'class) (interpret-outer (cdr statement-list) (interpret-class (car statement-list environment return break continue throw cont)) return break continue throw cont))
       (else (myerror "you can only declare classes in the global scope!!!!")))))
 
 ;mvalue class
@@ -52,7 +52,7 @@
         (interpret-class-statement-list (cdr stmt-list)
                                         environment
                                         (let ((class-new (Mclass (car stmt-list) environment return break continue throw cont)))
-                                          (cont-currlass-repl (cont-class-repl cont class-new) class-new))))))
+                                          (cont-currclass-repl (cont-class-repl cont class-new) class-new))))))
 
  ; interprets a list of statements.  The environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -145,7 +145,7 @@
 ;   Otherwise, it interprets the catch block with the exception bound to the thrown value and interprets the finally block when the catch is done
 ;*****************what to do with cont here
 (define create-throw-catch-continuation
-  (lambda (catch-statement environment return break continue throw jump finally-block)
+  (lambda (catch-statement environment return break continue throw jump finally-block cont)
     (cond
       ((null? catch-statement) (lambda (ex env) (throw ex (interpret-block finally-block env return break continue throw)))) 
       ((not (eq? 'catch (statement-type catch-statement))) (myerror "Incorrect catch statement"))
@@ -172,7 +172,7 @@
               (new-return (lambda (v) (begin (interpret-block finally-block environment return break continue throw) (return v))))
               (new-break (lambda (env) (break (interpret-block finally-block env return break continue throw))))
               (new-continue (lambda (env) (continue (interpret-block finally-block env return break continue throw))))
-              (new-throw (create-throw-catch-continuation (get-catch statement) environment return break continue throw jump finally-block)))
+              (new-throw (create-throw-catch-continuation (get-catch statement) environment return break continue throw jump finally-block cont)))
          (interpret-block finally-block
                           (interpret-block try-block environment new-return new-break new-continue new-throw)
                           return break continue throw cont))))))
@@ -277,11 +277,11 @@
 (define variable-lookup
   (lambda (name environment class inst)
     (cond
-     ((exists? environment name) (lookup state name))
+     ((exists? environment name) (lookup environment name))
      (else (myerror "doesn't fucking work")))))
 
 (define dot-inst-class cadr);  TODO something important
-
+(define interpret-new cadr); TODO something important
 (define class-fields-repl
   (lambda (class fields)
     (replace-in-list class 3 fields)))
@@ -474,8 +474,8 @@
 (define replace-in-list
   (lambda (list i x)
     (if (= 0 i)
-        (cons val (cdr list))
-        (cons (car list) (replace (cdr list) (- i 1) x)))))
+        (cons x (cdr list))
+        (cons (car list) (replace-in-list (cdr list) (- i 1) x)))))
 
 
 ;------------------------
