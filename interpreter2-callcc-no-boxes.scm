@@ -207,7 +207,19 @@
 ;evaluation functioncall used for main
 (define eval-funccall
   (lambda (fcall environment return break continue throw cont)
-    (let* ((state (lookup(get-func-name fcall) environment))
+    (let* ((cls (lookup-func (cadr fcall) environment return break continue throw cont))
+           (closure (car cls))
+           (instance (cadr cls))
+          ; (instance ((list-ref closure 2) instance))
+           (class (caddr cls))
+           (currclass ((cadddr closure) state))
+           (class (if (eq? 'null instance) currclass class))
+          ; (outerenv ((caddr closure) state))
+           ;(newstate (cons (new-layer-from-arglist (car closure) (cddr funccall) state ctx) outerenv))
+         ;  (err (lambda (v) (error "Can't break or continue here.")))
+
+           
+           (state (lookup(get-func-name fcall) environment))
            (outerenv ((get-func-env state) environment))
            (paramvals (map (lambda (v) (eval-expression v environment return break continue throw)) (get-func-params fcall)))
            (newenv (new-params-layer (get-params state) paramvals (push-frame outerenv)))
@@ -215,8 +227,16 @@
            (throw (lambda (v env) (myerror "Uncaught exception thrown"))))
       (call/cc
        (lambda (return)
-         (interpret-statement-list (get-body-func state) newenv return error error throw cont)
+         (interpret-statement-list (cadr closure) newenv return error error throw
+                                   (cont-class-repl
+                                    (cont-inst-repl
+                                     (cont-currclass-repl cont
+                                      currclass)
+                                     instance)
+                                     class))
          )))))
+
+
 
 ;evaluate the main function call
 (define eval-main
@@ -280,7 +300,7 @@
      ((exists? environment name) (lookup environment name))
      (else (myerror "doesn't fucking work")))))
 
-(define dot-inst-class cadr);  TODO something important
+(define dot-inst-class cadr) ;TODO
 (define interpret-new cadr); TODO something important
 (define class-fields-repl
   (lambda (class fields)
