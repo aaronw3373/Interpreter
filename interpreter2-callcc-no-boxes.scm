@@ -298,9 +298,9 @@
 (define variable-lookup
   (lambda (name environment class inst)
     (cond
-     ((exists? environment name) (lookup environment name))
+     ((exists? name environment) (lookup environment name))
      ((and (not (eq? 'null inst)) ; don't attempt to lookup if no instance
-           (exists? (list (car (cont-class-instance-names class)) (inst-values inst)) name))
+           (exists? name (list (car (cont-class-instance-names class)) (inst-values inst))))
       (lookup-in-env (list (car (cont-class-instance-names class)) (inst-values inst)) name))
      (else (myerror "doesn't fucking work")))))
 
@@ -575,8 +575,8 @@
 (define function-lookup
   (lambda (name environment class inst)
     (cond
-      ((exists-in-frame? environment name) (lookup-in-frame environment name))
-      ((exists? environment name) (lookup-in-env environment name))
+      ((exists-in-frame? name environment) (lookup-in-frame environment name))
+      ((exists? name environment) (lookup-variable name environment))
       (else (error "Function not found: " name)))))
 
 ; Return the value bound to a variable in the environment
