@@ -265,7 +265,12 @@
     (let ((inst-class (dot-inst-class (cadr expr) state (cont-currclass cont) cont)))
       (variable-lookup (caddr expr) (newenvironment) (cadr inst-class) (car inst-class)))))
 
-(define variable-lookup cadr); TODO something important
+(define variable-lookup
+  (lambda (name environment class inst)
+    (cond
+     ((exists? environment name) (lookup state name))
+     (else (myerror "doesn't fucking work")))))
+
 (define dot-inst-class cadr);  TODO something important
 
 (define class-fields-repl
